@@ -83,7 +83,7 @@ struct pkt_icmp {
 	struct virt_header vh;
 	struct ether_header eh;
 	struct ip ip;
-	struct icmp icmp;
+	struct icmphdr icmp;
 	uint8_t body[MAX_BODYSIZE];	// XXX hardwired
 } __attribute__((__packed__));
 

@@ -160,16 +160,45 @@ update_addresses_udp(struct pkt_udp *pkt, struct glob_arg *g)
     // update checksum
 }
 
+static void
+update_addresses_icmp(struct pkt_icmp *pkt, struct glob_arg *g)
+{
+	uint32_t a;
+	//uint16_t p;
+	struct ip *ip = &pkt->ip;
+	//struct udphdr *udp = &pkt->udp;
+	//struct icmphdr *icmp = &pkt->icmp;
+
+    do {
+		
+	a = ntohl(ip->ip_src.s_addr);
+	if (a < g->src_ip.end) { // just inc, no wrap 
+		ip->ip_src.s_addr = htonl(a + 1);
+		break;
+	}
+	ip->ip_src.s_addr = htonl(g->src_ip.start);
+
+	a = ntohl(ip->ip_dst.s_addr);
+	if (a < g->dst_ip.end) { // just inc, no wrap 
+		ip->ip_dst.s_addr = htonl(a + 1);
+		break;
+	}
+	ip->ip_dst.s_addr = htonl(g->dst_ip.start);
+    } while (0);
+    // update checksum
+}
+
 /*
  * create and enqueue a batch of packets on a ring.
  * On the last one set NS_REPORT to tell the driver to generate
  * an interrupt when done.
  */
 static int
-send_udp_packets(struct netmap_ring *ring, struct pkt_udp *pkt, void *frame,
+send_packets(struct netmap_ring *ring, struct pkt_udp *pkt_udp, struct pkt_icmp *pkt_icmp, void *frame,
 		int size, struct glob_arg *g, u_int count, int options,
 		u_int nfrags)
 {
+	
 	u_int n, sent, cur = ring->cur;
 	u_int fcnt;
 
@@ -203,11 +232,21 @@ send_udp_packets(struct netmap_ring *ring, struct pkt_udp *pkt, void *frame,
 		} else if (options & OPT_COPY) {
 			nm_pkt_copy(frame, p, size);
 			if (fcnt == nfrags)
-				update_addresses_udp(pkt, g);
+			{
+				if(g->proto==IPPROTO_ICMP)
+					update_addresses_icmp(pkt_icmp, g);
+				else
+				update_addresses_udp(pkt_udp, g);
+			}
 		} else if (options & OPT_MEMCPY) {
 			memcpy(p, frame, size);
 			if (fcnt == nfrags)
-				update_addresses_udp(pkt, g);
+				{
+					if(g->proto==IPPROTO_ICMP)
+						update_addresses_icmp(pkt_icmp, g);
+					else
+						update_addresses_udp(pkt_udp, g);
+				}
 		} else if (options & OPT_PREFETCH) {
 			__builtin_prefetch(p);
 		}
@@ -228,6 +267,9 @@ send_udp_packets(struct netmap_ring *ring, struct pkt_udp *pkt, void *frame,
 
 	return (sent);
 }
+
+
+
 
 void *
 sender_body(void *data)
@@ -282,7 +324,8 @@ struct pkt_icmp *pkt_icmp = &targ->pkt_icmp;
             update_addresses_udp(pkt_udp, targ->g);
 		}
 		else
-            {/*todo*/}
+			update_addresses_icmp(pkt_icmp, targ->g);
+			
 
 		if (i > 10000) {
 			targ->count = sent;
@@ -300,7 +343,8 @@ struct pkt_icmp *pkt_icmp = &targ->pkt_icmp;
             update_addresses_udp(pkt_udp, targ->g);
 		}
 		else
-            {/*todo*/}
+           	update_addresses_icmp(pkt_udp, targ->g);
+
 		if (i > 10000) {
 			targ->count = sent;
 			i = 0;
@@ -351,13 +395,14 @@ struct pkt_icmp *pkt_icmp = &targ->pkt_icmp;
 			if (frags > 1)
 				limit = ((limit + frags - 1) / frags) * frags;
 
-  if(targ->g->proto == IPPROTO_UDP){
-            m = send_udp_packets(txring, pkt_udp, frame, size, targ->g,
+			if(targ->g->proto == IPPROTO_UDP)
+            m = send_packets(txring, pkt_udp, NULL, frame, size, targ->g,
 					 limit, options, frags);
-		}
-		else
-            {/*todo*/}
-
+			else
+			m = send_packets(txring, NULL, pkt_icmp, frame, size, targ->g,
+					 limit, options, frags);	 
+		
+		
 
 			ND("limit %d tail %d frags %d m %d",
 				limit, txring->tail, frags, m);
@@ -368,8 +413,8 @@ struct pkt_icmp *pkt_icmp = &targ->pkt_icmp;
 				if (tosend <= 0)
 					break;
 			}
-		}
 	}
+}
 	/* flush any remaining packets */
 	ioctl(pfd.fd, NIOCTXSYNC, NULL);
 

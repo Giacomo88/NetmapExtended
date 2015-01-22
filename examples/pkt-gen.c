@@ -392,7 +392,7 @@ main(int arc, char **argv)
 	g.frags = 1;
 	g.nmr_config = "";
 	g.virt_header = 0;
-	g.proto = IPPROTO_UDP;
+	g.proto = IPPROTO_ICMP;
 	
 	while ( (ch = getopt(arc, argv,
 			"a:f:F:n:i:Il:d:s:D:S:b:c:o:p:T:w:WvR:XC:H:e:m:")) != -1) {
