@@ -46,11 +46,11 @@ wrapsum(u_int32_t sum)
 void
 initialize_packet(struct targ *targ)
 {
-	struct pkt_udp *pkt = &targ->pkt_udp;
+	struct pkt *pkt_icmp = &targ->pkt_icmp;
 	struct ether_header *eh;
 	struct ip *ip;
-	struct udphdr *udp;
-	uint16_t paylen = targ->g->pkt_size - sizeof(*eh) - sizeof(struct ip);
+	struct icmphdr *icmp;
+	uint16_t paylen = targ->g->pkt_size - sizeof(*eh) - sizeof(struct ip); /* length of icmp header + data*/
 	const char *payload = targ->g->options & OPT_INDIRECT ?
 		indirect_payload : default_payload;
 	int i, l0 = strlen(payload);
@@ -65,33 +65,35 @@ initialize_packet(struct targ *targ)
 	ip = &pkt->ip;
 
 	/* prepare the headers */
-        ip->ip_v = IPVERSION;
-        ip->ip_hl = 5;
-        ip->ip_id = 0;
-        ip->ip_tos = IPTOS_LOWDELAY;
+    ip->ip_v = IPVERSION;
+    ip->ip_hl = 5;
+    ip->ip_id = 0;
+    ip->ip_tos = IPTOS_LOWDELAY;
 	ip->ip_len = ntohs(targ->g->pkt_size - sizeof(*eh));
-        ip->ip_id = 0;
-        ip->ip_off = htons(IP_DF); /* Don't fragment */
-        ip->ip_ttl = IPDEFTTL;
-	ip->ip_p = IPPROTO_UDP;
+    ip->ip_id = 0;
+    ip->ip_off = htons(IP_DF); /* Don't fragment */
+    ip->ip_ttl = IPDEFTTL;
+	ip->ip_p = IPPROTO_ICMP;
 	ip->ip_dst.s_addr = htonl(targ->g->dst_ip.start);
 	ip->ip_src.s_addr = htonl(targ->g->src_ip.start);
 	ip->ip_sum = wrapsum(checksum(ip, sizeof(*ip), 0));
 
 
-	udp = &pkt->udp;
-        udp->uh_sport = htons(targ->g->src_ip.port0);
+	icmp = &pkt_icmp->icmp;
+	//icmp->icmp_type = 8;  // ECHO_REQUEST
+
+    /*    udp->uh_sport = htons(targ->g->src_ip.port0);
         udp->uh_dport = htons(targ->g->dst_ip.port0);
 	udp->uh_ulen = htons(paylen);
 	/* Magic: taken from sbin/dhclient/packet.c */
-	udp->uh_sum = wrapsum(checksum(udp, sizeof(*udp),
+	/*udp->uh_sum = wrapsum(checksum(udp, sizeof(*udp),
                     checksum(pkt->body,
                         paylen - sizeof(*udp),
                         checksum(&ip->ip_src, 2 * sizeof(ip->ip_src),
                             IPPROTO_UDP + (u_int32_t)ntohs(udp->uh_ulen)
                         )
                     )
-                ));
+                ));*/
 
 	eh = &pkt->eh;
 	bcopy(&targ->g->src_mac.start, eh->ether_shost, 6);

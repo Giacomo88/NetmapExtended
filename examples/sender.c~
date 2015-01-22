@@ -203,11 +203,11 @@ send_udp_packets(struct netmap_ring *ring, struct pkt_udp *pkt, void *frame,
 		} else if (options & OPT_COPY) {
 			nm_pkt_copy(frame, p, size);
 			if (fcnt == nfrags)
-				update_addresses_udp(pkt, g);
+				update_addresses(pkt, g);
 		} else if (options & OPT_MEMCPY) {
 			memcpy(p, frame, size);
 			if (fcnt == nfrags)
-				update_addresses_udp(pkt, g);
+				update_addresses(pkt, g);
 		} else if (options & OPT_PREFETCH) {
 			__builtin_prefetch(p);
 		}
@@ -241,23 +241,19 @@ sender_body(void *data)
 	int options = targ->g->options | OPT_COPY;
 	struct timespec nexttime = { 0, 0}; // XXX silence compiler
 	int rate_limit = targ->g->tx_rate;
-
+	
 	void *frame;
 	int size;
-struct pkt_udp *pkt_udp = &targ->pkt_udp;
-struct pkt_icmp *pkt_icmp = &targ->pkt_icmp;
 
-	if(targ->g->proto == IPPROTO_UDP){
-		frame = pkt_udp;
-		frame += sizeof(pkt_udp->vh) - targ->g->virt_header;
+	if(targ->proto = IPPROTO_UDP){
+		struct pkt_udp *pkt = &targ->pkt_udp;
 	}
 	else{
-		frame = pkt_icmp;
-		frame += sizeof(pkt_icmp->vh) - targ->g->virt_header;
+		struct pkt_icmp *pkt = &targ->pkt_icmp;
 	}
 
-
-
+	frame = pkt;
+	frame += sizeof(pkt->vh) - targ->g->virt_header;
 	size = targ->g->pkt_size + targ->g->virt_header;
 
 	D("start, fd %d main_fd %d", targ->fd, targ->g->main_fd);
@@ -278,12 +274,7 @@ struct pkt_icmp *pkt_icmp = &targ->pkt_icmp;
 	    for (i = 0; !targ->cancel && (n == 0 || sent < n); i++) {
 		if (write(targ->g->main_fd, frame, size) != -1)
 			sent++;
-        if(targ->g->proto == IPPROTO_UDP){
-            update_addresses_udp(pkt_udp, targ->g);
-		}
-		else
-            {/*todo*/}
-
+		update_addresses_udp(pkt, targ->g);
 		if (i > 10000) {
 			targ->count = sent;
 			i = 0;
@@ -296,11 +287,7 @@ struct pkt_icmp *pkt_icmp = &targ->pkt_icmp;
 	    for (i = 0; !targ->cancel && (n == 0 || sent < n); i++) {
 		if (pcap_inject(p, frame, size) != -1)
 			sent++;
-		  if(targ->g->proto == IPPROTO_UDP){
-            update_addresses_udp(pkt_udp, targ->g);
-		}
-		else
-            {/*todo*/}
+		update_addresses_udp(pkt, targ->g);
 		if (i > 10000) {
 			targ->count = sent;
 			i = 0;
@@ -342,7 +329,7 @@ struct pkt_icmp *pkt_icmp = &targ->pkt_icmp;
 			options &= ~OPT_COPY;
 		}
 		for (i = targ->nmd->first_tx_ring; i <= targ->nmd->last_tx_ring; i++) {
-			int m=0, limit = rate_limit ?  tosend : targ->g->burst;
+			int m, limit = rate_limit ?  tosend : targ->g->burst;
 			if (n > 0 && n - sent < limit)
 				limit = n - sent;
 			txring = NETMAP_TXRING(nifp, i);
@@ -351,14 +338,8 @@ struct pkt_icmp *pkt_icmp = &targ->pkt_icmp;
 			if (frags > 1)
 				limit = ((limit + frags - 1) / frags) * frags;
 
-  if(targ->g->proto == IPPROTO_UDP){
-            m = send_udp_packets(txring, pkt_udp, frame, size, targ->g,
+			m = send_udp_packets(txring, pkt, frame, size, targ->g,
 					 limit, options, frags);
-		}
-		else
-            {/*todo*/}
-
-
 			ND("limit %d tail %d frags %d m %d",
 				limit, txring->tail, frags, m);
 			sent += m;
