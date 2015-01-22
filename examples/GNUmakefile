@@ -37,7 +37,7 @@ all-x86: $(PROGS) $(X86PROGS)
 
 kern_test: testmod/kern_test.c
 
-pkt-gen: pkt-gen.o sender.o main_thread.o receiver.o packet.o start_threads.o ping.o pong.o
+pkt-gen: pkt-gen.o sender.o main_thread.o receiver.o udp_packet.o start_threads.o ping.o pong.o icmp_packet.o
 
 bridge: bridge.o
 

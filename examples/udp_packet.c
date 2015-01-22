@@ -1,11 +1,5 @@
 #include "everything.h"
 
-const char *default_payload="netmap pkt-gen DIRECT payload\n"
-	"http://info.iet.unipi.it/~luigi/netmap/ ";
-
-const char *indirect_payload="netmap pkt-gen indirect payload\n"
-	"http://info.iet.unipi.it/~luigi/netmap/ ";
-
 /* Compute the checksum of the given ip header. */
 static uint16_t
 checksum(const void *data, uint16_t len, uint32_t sum)
@@ -44,8 +38,14 @@ wrapsum(u_int32_t sum)
  * The copy could be done better instead of repeating it each time.
  */
 void
-initialize_packet(struct targ *targ)
+initialize_packet_udp(struct targ *targ)
 {
+	const char *default_payload="netmap pkt-gen DIRECT payload\n"
+	"http://info.iet.unipi.it/~luigi/netmap/ ";
+
+	const char *indirect_payload="netmap pkt-gen indirect payload\n"
+	"http://info.iet.unipi.it/~luigi/netmap/ ";
+
 	struct pkt_udp *pkt = &targ->pkt_udp;
 	struct ether_header *eh;
 	struct ip *ip;

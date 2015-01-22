@@ -1,11 +1,5 @@
 #include "everything.h"
 
-const char *default_payload="netmap pkt-gen DIRECT payload\n"
-	"http://info.iet.unipi.it/~luigi/netmap/ ";
-
-const char *indirect_payload="netmap pkt-gen indirect payload\n"
-	"http://info.iet.unipi.it/~luigi/netmap/ ";
-
 /* Compute the checksum of the given ip header. */
 static uint16_t
 checksum(const void *data, uint16_t len, uint32_t sum)
@@ -44,12 +38,18 @@ wrapsum(u_int32_t sum)
  * The copy could be done better instead of repeating it each time.
  */
 void
-initialize_packet(struct targ *targ)
+initialize_packet_icmp(struct targ *targ)
 {
-	struct pkt *pkt_icmp = &targ->pkt_icmp;
+	const char *default_payload="netmap pkt-gen DIRECT payload\n"
+	"http://info.iet.unipi.it/~luigi/netmap/ ";
+
+	const char *indirect_payload="netmap pkt-gen indirect payload\n"
+	"http://info.iet.unipi.it/~luigi/netmap/ ";
+
+	struct pkt_icmp *pkt = &targ->pkt_icmp;
 	struct ether_header *eh;
 	struct ip *ip;
-	struct icmphdr *icmp;
+	struct icmp *icmp;
 	uint16_t paylen = targ->g->pkt_size - sizeof(*eh) - sizeof(struct ip); /* length of icmp header + data*/
 	const char *payload = targ->g->options & OPT_INDIRECT ?
 		indirect_payload : default_payload;
@@ -79,14 +79,14 @@ initialize_packet(struct targ *targ)
 	ip->ip_sum = wrapsum(checksum(ip, sizeof(*ip), 0));
 
 
-	icmp = &pkt_icmp->icmp;
-	//icmp->icmp_type = 8;  // ECHO_REQUEST
+	icmp = &pkt->icmp;
+	icmp->icmp_type = 8;  // ECHO_REQUEST
 
     /*    udp->uh_sport = htons(targ->g->src_ip.port0);
         udp->uh_dport = htons(targ->g->dst_ip.port0);
 	udp->uh_ulen = htons(paylen);
-	/* Magic: taken from sbin/dhclient/packet.c */
-	/*udp->uh_sum = wrapsum(checksum(udp, sizeof(*udp),
+	 Magic: taken from sbin/dhclient/packet.c
+	udp->uh_sum = wrapsum(checksum(udp, sizeof(*udp),
                     checksum(pkt->body,
                         paylen - sizeof(*udp),
                         checksum(&ip->ip_src, 2 * sizeof(ip->ip_src),

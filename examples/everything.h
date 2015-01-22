@@ -83,7 +83,7 @@ struct pkt_icmp {
 	struct virt_header vh;
 	struct ether_header eh;
 	struct ip ip;
-	struct icmphdr icmp;
+	struct icmp icmp;
 	uint8_t body[MAX_BODYSIZE];	// XXX hardwired
 } __attribute__((__packed__));
 
@@ -176,7 +176,7 @@ struct targ {
 	pthread_t thread;
 	int affinity;
 
-	
+
 	struct pkt_udp pkt_udp;
 	struct pkt_icmp pkt_icmp;
 
@@ -203,3 +203,4 @@ struct targ {
 #endif /* __APPLE__ */
 
 #define	PAY_OFS	42	/* where in the pkt... */
+

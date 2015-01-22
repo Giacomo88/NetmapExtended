@@ -1,6 +1,8 @@
 #include "everything.h"
-#include "packet.h"
+#include "udp_packet.h"
+#include "icmp_packet.h"
 #include "receiver.h"
+
 void
 start_threads(struct glob_arg *g, struct targ *targs)
 {
@@ -62,8 +64,12 @@ start_threads(struct glob_arg *g, struct targ *targs)
 		} else {
 			t->affinity = -1;
 		}
+
 		/* default, init packets */
-		initialize_packet(t);
+		if(g->proto == IPPROTO_UDP)
+            initialize_packet_udp(t);
+        else
+            initialize_packet_icmp(t);
 
 		if (pthread_create(&t->thread, NULL, g->td_body, t) == -1) {
 			D("Unable to create thread %d: %s", i, strerror(errno));
