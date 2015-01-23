@@ -420,8 +420,7 @@ main(int arc, char **argv)
 	g.frags = 1;
 	g.nmr_config = "";
 	g.virt_header = 0;
-	g.proto=IPPROTO_UDP;
-	
+
 	while ( (ch = getopt_long(arc, argv,
 			"a:f:F:n:i:Il:b:c:o:p:T:w:WvR:XC:H:e:m:", long_options, &opt_index)) != -1) {
 		struct sf *fn;
