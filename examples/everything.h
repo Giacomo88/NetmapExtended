@@ -2,6 +2,9 @@
 
 #define _GNU_SOURCE	/* for CPU_SET() */
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <getopt.h>	//getopt_long
 #define NETMAP_WITH_LIBS
 #include "net/netmap_user.h"
 

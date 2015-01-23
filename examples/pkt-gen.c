@@ -260,26 +260,27 @@ usage(void)
 	fprintf(stderr,
 		"Usage:\n"
 		"%s arguments\n"
-		"\t-i interface		interface name\n"
-		"\t-f function		tx rx ping pong\n"
-		"\t-n count		number of iterations (can be 0)\n"
+		"\t--data param_name=VALUE   	parameters for packet generator: dst_ip src_ip dst-mac src-mac\n"
+		"\t-i interface			interface name\n"
+		"\t-f function			tx rx ping pong\n"
+		"\t-n count			number of iterations (can be 0)\n"
 		"\t-t pkts_to_send		also forces tx mode\n"
-		"\t-r pkts_to_receive	also forces rx mode\n"
-		"\t-l pkt_size		in bytes excluding CRC\n"
-		"\t-d dst_ip[:port[-dst_ip:port]]   single or range\n"
+		"\t-r pkts_to_receive		also forces rx mode\n"
+		"\t-l pkt_size			in bytes excluding CRC\n"
+		/*"\t-d dst_ip[:port[-dst_ip:port]]   single or range\n"
 		"\t-s src_ip[:port[-src_ip:port]]   single or range\n"
 		"\t-D dst-mac\n"
-		"\t-S src-mac\n"
-		"\t-a cpu_id		use setaffinity\n"
+		"\t-S src-mac\n" */
+		"\t-a cpu_id			use setaffinity\n"
 		"\t-b burst size		testing, mostly\n"
-		"\t-c cores		cores to use\n"
-		"\t-p threads		processes/threads to use\n"
-		"\t-T report_ms		milliseconds between reports\n"
-		"\t-P			use libpcap instead of netmap\n"
+		"\t-c cores			cores to use\n"
+		"\t-p threads			processes/threads to use\n"
+		"\t-T report_ms			milliseconds between reports\n"
+		"\t-P				use libpcap instead of netmap\n"
 		"\t-w wait_for_link_time	in seconds\n"
-		"\t-R rate		in packets per second\n"
-		"\t-X			dump payload\n"
-		"\t-H len		add empty virtio-net-header with size 'len'\n"
+		"\t-R rate			in packets per second\n"
+		"\t-X				dump payload\n"
+		"\t-H len			add empty virtio-net-header with size 'len'\n"
 		"",
 		cmd);
 
@@ -361,16 +362,43 @@ tap_alloc(char *dev)
         return fd;
 }
 
+/* struttura di libreria per la getopt_long
+ * 
+ * struct option {
+ * 	const char *name; //nome dell'opzione
+ * 	int has_arg;	//vale 1 (o required_argument) se l'opzione richiede dei parametri, 0 (no_argument) altrimenti
+ * 	int *flag;	//valore restituito dalla getopt_long quando si specifica quell'opzione
+ * 	int val;	//nome alternativo con una singola lettera (ad esempio --help, -h)
+ * };
+ */
+static struct option long_options[] = {
+  {"data", required_argument, 0, 0 },
+  {0, 0, 0, 0 }
+};
+
+//parameters of option --data 
+const char *data_param[] = {
+    "dst_ip=",
+    "src_ip=",
+    "dst-mac=",
+    "src-mac="};
+#define DATA_PARAM_SIZE 4
+
 int
 main(int arc, char **argv)
 {
-	int i;
+	int i=0, j=0;
 
 	struct glob_arg g;
 
 	int ch;
 	int wait_link = 2;
 	int devqueues = 1;	/* how many device queues */
+	int opt_index=0;	/* index of long options (getopt_long) */
+	int index=0;
+	int param_num=0;	/* number of parameters of long options */
+	
+	//char **function_param; 	/* parameters of long options */
 
 	bzero(&g, sizeof(g));
 
@@ -392,10 +420,9 @@ main(int arc, char **argv)
 	g.frags = 1;
 	g.nmr_config = "";
 	g.virt_header = 0;
-	g.proto = IPPROTO_ICMP;
-	
-	while ( (ch = getopt(arc, argv,
-			"a:f:F:n:i:Il:d:s:D:S:b:c:o:p:T:w:WvR:XC:H:e:m:")) != -1) {
+
+	while ( (ch = getopt_long(arc, argv,
+			"a:f:F:n:i:Il:b:c:o:p:T:w:WvR:XC:H:e:m:", long_options, &opt_index)) != -1) {
 		struct sf *fn;
 
 		switch(ch) {
@@ -404,6 +431,57 @@ main(int arc, char **argv)
 			usage();
 			break;
 
+		case 0: // LONG_OPTIONS CASE
+			index = optind-1;
+			
+			//count number of parameters
+			while(index < arc && argv[index][0] != '-')
+			{
+			  param_num++;
+			  index++;
+			}
+			
+			index = optind-1;
+			//function_param = (char**) malloc( param_num * sizeof(char*) );
+			
+			while(index < arc && argv[index][0] != '-')
+			{
+			  //function_param[i] = strdup(argv[index]);
+			  
+			  for(j=0; j<DATA_PARAM_SIZE; j++)
+			  {
+			    if(strstr(argv[index], data_param[j]) != NULL)
+			    {
+			      if(j==0) //dst_ip
+				g.dst_ip.name = &argv[index][strlen(data_param[j])];
+			      
+			      if(j==1) //src_ip
+				g.src_ip.name = &argv[index][strlen(data_param[j])];
+			      
+			      if(j==2) //dst-mac
+				g.dst_mac.name = &argv[index][strlen(data_param[j])];
+			      
+			      if(j==3) //src_mac
+				g.src_mac.name = &argv[index][strlen(data_param[j])];
+			    }
+			  }
+			  
+			  index++;
+			  i++;
+			}
+			
+			/**************************DA TOGLIERE**************************************
+			
+			printf("\nI parametri da passare alla funzione sono:\n");
+			for(i=0; i<param_num; i++)
+			{
+			  printf("%s\n", function_param[i]);
+			  free(function_param[i]);
+			}
+			***************************************************************************/
+
+			break;
+	
 		case 'n':
 			g.npackets = atoi(optarg);
 			break;
@@ -474,13 +552,13 @@ main(int arc, char **argv)
 			g.pkt_size = atoi(optarg);
 			break;
 
-		case 'd':
+		/*case 'd':
 			g.dst_ip.name = optarg;
 			break;
 
 		case 's':
 			g.src_ip.name = optarg;
-			break;
+			break;*/
 
 		case 'T':	/* report interval */
 			g.report_interval = atoi(optarg);
@@ -504,13 +582,13 @@ main(int arc, char **argv)
 			g.nthreads = atoi(optarg);
 			break;
 
-		case 'D': /* destination mac */
+		/*case 'D': // destination mac
 			g.dst_mac.name = optarg;
 			break;
 
-		case 'S': /* source mac */
+		case 'S': // source mac 
 			g.src_mac.name = optarg;
-			break;
+			break;*/
 		case 'v':
 			verbose++;
 			break;
