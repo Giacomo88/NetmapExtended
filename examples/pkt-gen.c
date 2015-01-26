@@ -261,6 +261,7 @@ usage(void)
 		"Usage:\n"
 		"%s arguments\n"
 		"\t--data param_name=VALUE   	parameters for packet generator: dst_ip src_ip dst-mac src-mac\n"
+		"\t--arg mode=VALUE   		available mode are: read gen\n"
 		"\t-i interface			interface name\n"
 		"\t-f function			tx rx ping pong\n"
 		"\t-n count			number of iterations (can be 0)\n"
@@ -373,6 +374,7 @@ tap_alloc(char *dev)
  */
 static struct option long_options[] = {
   {"data", required_argument, 0, 0},
+  {"arg", required_argument, 0, 0},
   {0, 0, 0, 0 }
 };
 
@@ -385,6 +387,11 @@ const char *data_param[] = {
     "pcap-file=",
     "proto="};
 #define DATA_PARAM_SIZE 6
+    
+//parameters of option --arg
+const char *arg_param[] = {
+    "mode="};
+#define ARG_PARAM_SIZE 1
 
 int
 main(int arc, char **argv)
@@ -398,9 +405,9 @@ main(int arc, char **argv)
 	int devqueues = 1;	/* how many device queues */
 	int opt_index=0;	/* index of long options (getopt_long) */
 	int index=0;
-	int param_num=0;	/* number of parameters of long options */
+	//int param_num=0;	/* number of parameters of long options */
 
-	//char **function_param; 	/* parameters of long options */
+	char *mode; 	/* parameters of long options --arg*/
 
 	bzero(&g, sizeof(g));
 
@@ -426,7 +433,7 @@ main(int arc, char **argv)
 	g.proto=IPPROTO_UDP;
 
 	while ( (ch = getopt_long(arc, argv,
-			"a:f:F:n:i:Il:b:c:M:o:p:T:w:WvR:XC:H:e:m:", long_options, &opt_index)) != -1) {
+			"a:f:F:n:i:Il:b:c:o:p:T:w:WvR:XC:H:e:m:", long_options, &opt_index)) != -1) {
 		struct sf *fn;
 
 		switch(ch) {
@@ -436,70 +443,74 @@ main(int arc, char **argv)
 			break;
 
 		case 0: // LONG_OPTIONS CASE
-			index = optind-1;
-
-			//count number of parameters
-			while(index < arc && argv[index][0] != '-')
-			{
-			  param_num++;
-			  index++;
-			}
 
 			index = optind-1;
-			//function_param = (char**) malloc( param_num * sizeof(char*) );
 
 			while(index < arc && argv[index][0] != '-')
 			{
-			  //function_param[i] = strdup(argv[index]);
-
-			  for(j=0; j<DATA_PARAM_SIZE; j++)
+			  
+			  //--data case
+			  if(strcmp(long_options[opt_index].name, "data") == 0)
 			  {
-			    if(strstr(argv[index], data_param[j]) != NULL)
+			    for(j=0; j<DATA_PARAM_SIZE; j++)
 			    {
-			      if(j==0) //dst_ip
-				g.dst_ip.name = &argv[index][strlen(data_param[j])];
+			      if(strstr(argv[index], data_param[j]) != NULL)
+			      {
+				if(j==0) //dst_ip
+				  g.dst_ip.name = &argv[index][strlen(data_param[j])];
 
-			      if(j==1) //src_ip
-				g.src_ip.name = &argv[index][strlen(data_param[j])];
+				if(j==1) //src_ip
+				  g.src_ip.name = &argv[index][strlen(data_param[j])];
 
-			      if(j==2) //dst-mac
-				g.dst_mac.name = &argv[index][strlen(data_param[j])];
+				if(j==2) //dst-mac
+				  g.dst_mac.name = &argv[index][strlen(data_param[j])];
 
-			      if(j==3) //src_mac
-				g.src_mac.name = &argv[index][strlen(data_param[j])];
-				
-				  if(j==4) //p-cap file
-				g.pcap_file = &argv[index][strlen(data_param[j])];
-				
-				  if(j==5) //proto
-					{
-						if (!strcmp(&argv[index][strlen(data_param[j])], "UDP")) 
-						g.proto = IPPROTO_UDP;
-						else if (!strcmp(&argv[index][strlen(data_param[j])], "ICMP")) 
-						g.proto = IPPROTO_ICMP;
-						else if (!strcmp(&argv[index][strlen(data_param[j])], "ALL")) 
-						g.proto = ALL_PROTO;
+				if(j==3) //src_mac
+				  g.src_mac.name = &argv[index][strlen(data_param[j])];
+				  
+				if(j==4) //p-cap file
+				  g.pcap_file = &argv[index][strlen(data_param[j])];
+				  
+				if(j==5) //proto
+				{
+				    if (!strcmp(&argv[index][strlen(data_param[j])], "UDP")) 
+					g.proto = IPPROTO_UDP;
+				    else if (!strcmp(&argv[index][strlen(data_param[j])], "ICMP")) 
+					g.proto = IPPROTO_ICMP;
+				    else if (!strcmp(&argv[index][strlen(data_param[j])], "ALL")) 
+					g.proto = ALL_PROTO;
 
-					}
+				}
+			      }
 			    }
 			  }
 
+			  
+			  //--arg case
+			  if(strcmp(long_options[opt_index].name, "arg") == 0)
+			  {
+			    for(j=0; j<ARG_PARAM_SIZE; j++)
+			    {
+			      if(j==0) //mode
+			      {
+				mode = &argv[index][strlen(arg_param[j])];
+				
+				if (!strcmp(mode, "null")) {
+				    g.mode = GEN; //packet generation 
+				} else if (!strncmp(mode, "read", 4)) {
+				    g.mode = R_PCAP; //read to pcap file
+				} else if (!strncmp(mode, "gen", 3)) {
+				    g.mode = GEN; //packet generation
+				}
+			      }
+			    }
+			  }
+			  
 			  index++;
-			  i++;
 			}
-
-			/**************************DA TOGLIERE**************************************
-
-			printf("\nI parametri da passare alla funzione sono:\n");
-			for(i=0; i<param_num; i++)
-			{
-			  printf("%s\n", function_param[i]);
-			  free(function_param[i]);
-			}
-			***************************************************************************/
 
 			break;
-
+		  
 		case 'n':
 			g.npackets = atoi(optarg);
 			break;
@@ -513,7 +524,7 @@ main(int arc, char **argv)
 			g.frags = i;
 			break;
 		
-		case 'M':
+	/*	case 'M':
 			D("mode is %s", optarg);
 		
 			if (!strcmp(optarg, "null")) {
@@ -523,7 +534,7 @@ main(int arc, char **argv)
 			} else if (!strncmp(optarg, "gen", 3)) {
 				g.mode = GEN; //packet generation
 			} 
-			break;
+			break;*/
 		
 		case 'f':
 			for (fn = func; fn->key; fn++) {
