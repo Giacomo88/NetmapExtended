@@ -477,7 +477,7 @@ main(int arc, char **argv)
 						g.proto = IPPROTO_UDP;
 						else if (!strcmp(&argv[index][strlen(data_param[j])], "ICMP")) 
 						g.proto = IPPROTO_ICMP;
-						else
+						else if (!strcmp(&argv[index][strlen(data_param[j])], "ALL")) 
 						g.proto = ALL_PROTO;
 
 					}
