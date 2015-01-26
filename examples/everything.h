@@ -158,6 +158,9 @@ struct glob_arg {
 	int virt_header;	/* send also the virt_header */
 	int extra_bufs;		/* goes in nr_arg3 */
 	uint8_t proto;
+	char* pcap_file;
+	uint8_t mode;
+	//uint8_t proto_read;
 };
 
 enum dev_type { DEV_NONE, DEV_NETMAP, DEV_PCAP, DEV_TAP };
@@ -207,3 +210,8 @@ struct targ {
 
 #define	PAY_OFS	42	/* where in the pkt... */
 
+#define R_PCAP 3
+
+#define ALL_PROTO 1
+
+#define GEN 2 

@@ -16,6 +16,7 @@ CFLAGS = -O2 -pipe
 CFLAGS += -Werror -Wall -Wunused-function
 CFLAGS += -I $(SRCDIR)/sys # -I/home/luigi/FreeBSD/head/sys -I../sys
 CFLAGS += -Wextra
+WITH_PCAP = 1
 ifdef WITH_PCAP
 # do not use pcap by default, as it is not always available on linux
 LDLIBS += -lpcap

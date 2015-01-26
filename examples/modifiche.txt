@@ -1,0 +1,66 @@
+sender.c
+1- head = pcap_open_offline(targ->g->pcap_file, errbuf);   //call pcap library function
+
+
+pkt-gen.c
+1- if(j==4) //p-cap file
+				g.pcap_file = &argv[index][strlen(data_param[j])];
+				
+2- //parameters of option --data
+const char *data_param[] = {
+    "dst_ip=",
+    "src_ip=",
+    "dst-mac=",
+    "src-mac=",
+    "pcap-file=",
+    "proto="};
+#define DATA_PARAM_SIZE 6
+
+
+
+
+everything.h
+1- uint8_t proto;
+	char* pcap_file;
+	int mode;
+
+2-
+
+sender.c
+
+1-// se la modalità di trasmissione è generazione di pacchetti
+	if(targ->g->mode==1)
+	{
+		if(targ->g->proto == IPPROTO_UDP){
+			frame = pkt_udp;
+			frame += sizeof(pkt_udp->vh) - targ->g->virt_header;
+			size = targ->g->pkt_size + targ->g->virt_header;
+		}
+		else if(targ->g->proto == IPPROTO_ICMP){
+			frame = pkt_icmp;
+			frame += sizeof(pkt_icmp->vh) - targ->g->virt_header;
+			size = targ->g->pkt_size + targ->g->virt_header;
+		}
+	}
+	else if(targ->g->mode==2) //se la modalità di trasmissione è lettura da file pcap
+	{
+		char errbuf[PCAP_ERRBUF_SIZE]; //not sure what to do with this, oh well
+		head = pcap_open_offline(targ->g->pcap_file, errbuf);   //call pcap library function
+		if (head == NULL) {
+		fprintf(stderr,"Couldn't open pcap file %s: %s\n", "file.pcap", errbuf);
+		/*return(2);*/
+		}
+		next = head;
+		pcap_reader(&buffer, head, next);
+		frame = buffer;
+		frame += sizeof(pkt_icmp->vh) - targ->g->virt_header;
+		size = targ->g->pkt_size + targ->g->virt_header;
+	}
+
+2- if(ip_hdr->ip_p == targ->g->proto)
+	{
+		
+
+		*buffer = (u_char*)malloc(header.len + size_vh);
+		memcpy(*&buffer[0],&vh,size_vh);
+		memcpy(*buffer + size_vh, pkt_ptr, header.len);

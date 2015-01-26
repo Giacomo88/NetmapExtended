@@ -363,7 +363,7 @@ tap_alloc(char *dev)
 }
 
 /* struttura di libreria per la getopt_long
- * 
+ *
  * struct option {
  * 	const char *name; //nome dell'opzione
  * 	int has_arg;	//vale 1 (o required_argument) se l'opzione richiede dei parametri, 0 (no_argument) altrimenti
@@ -372,17 +372,19 @@ tap_alloc(char *dev)
  * };
  */
 static struct option long_options[] = {
-  {"data", required_argument, 0, 0 },
+  {"data", required_argument, 0, 0},
   {0, 0, 0, 0 }
 };
 
-//parameters of option --data 
+//parameters of option --data
 const char *data_param[] = {
     "dst_ip=",
     "src_ip=",
     "dst-mac=",
-    "src-mac="};
-#define DATA_PARAM_SIZE 4
+    "src-mac=",
+    "pcap-file=",
+    "proto="};
+#define DATA_PARAM_SIZE 6
 
 int
 main(int arc, char **argv)
@@ -397,7 +399,7 @@ main(int arc, char **argv)
 	int opt_index=0;	/* index of long options (getopt_long) */
 	int index=0;
 	int param_num=0;	/* number of parameters of long options */
-	
+
 	//char **function_param; 	/* parameters of long options */
 
 	bzero(&g, sizeof(g));
@@ -420,10 +422,11 @@ main(int arc, char **argv)
 	g.frags = 1;
 	g.nmr_config = "";
 	g.virt_header = 0;
+	g.mode = GEN;	
 	g.proto=IPPROTO_UDP;
-	
+
 	while ( (ch = getopt_long(arc, argv,
-			"a:f:F:n:i:Il:b:c:o:p:T:w:WvR:XC:H:e:m:", long_options, &opt_index)) != -1) {
+			"a:f:F:n:i:Il:b:c:M:o:p:T:w:WvR:XC:H:e:m:", long_options, &opt_index)) != -1) {
 		struct sf *fn;
 
 		switch(ch) {
@@ -434,45 +437,59 @@ main(int arc, char **argv)
 
 		case 0: // LONG_OPTIONS CASE
 			index = optind-1;
-			
+
 			//count number of parameters
 			while(index < arc && argv[index][0] != '-')
 			{
 			  param_num++;
 			  index++;
 			}
-			
+
 			index = optind-1;
 			//function_param = (char**) malloc( param_num * sizeof(char*) );
-			
+
 			while(index < arc && argv[index][0] != '-')
 			{
 			  //function_param[i] = strdup(argv[index]);
-			  
+
 			  for(j=0; j<DATA_PARAM_SIZE; j++)
 			  {
 			    if(strstr(argv[index], data_param[j]) != NULL)
 			    {
 			      if(j==0) //dst_ip
 				g.dst_ip.name = &argv[index][strlen(data_param[j])];
-			      
+
 			      if(j==1) //src_ip
 				g.src_ip.name = &argv[index][strlen(data_param[j])];
-			      
+
 			      if(j==2) //dst-mac
 				g.dst_mac.name = &argv[index][strlen(data_param[j])];
-			      
+
 			      if(j==3) //src_mac
 				g.src_mac.name = &argv[index][strlen(data_param[j])];
+				
+				  if(j==4) //p-cap file
+				g.pcap_file = &argv[index][strlen(data_param[j])];
+				
+				  if(j==5) //proto
+					{
+						if (!strcmp(&argv[index][strlen(data_param[j])], "UDP")) 
+						g.proto = IPPROTO_UDP;
+						else if (!strcmp(&argv[index][strlen(data_param[j])], "ICMP")) 
+						g.proto = IPPROTO_ICMP;
+						else
+						g.proto = ALL_PROTO;
+
+					}
 			    }
 			  }
-			  
+
 			  index++;
 			  i++;
 			}
-			
+
 			/**************************DA TOGLIERE**************************************
-			
+
 			printf("\nI parametri da passare alla funzione sono:\n");
 			for(i=0; i<param_num; i++)
 			{
@@ -482,7 +499,7 @@ main(int arc, char **argv)
 			***************************************************************************/
 
 			break;
-	
+
 		case 'n':
 			g.npackets = atoi(optarg);
 			break;
@@ -495,7 +512,19 @@ main(int arc, char **argv)
 			}
 			g.frags = i;
 			break;
-
+		
+		case 'M':
+			D("mode is %s", optarg);
+		
+			if (!strcmp(optarg, "null")) {
+				g.mode = GEN; //packet generation 
+			} else if (!strncmp(optarg, "read", 4)) {
+				g.mode = R_PCAP; //read to pcap file
+			} else if (!strncmp(optarg, "gen", 3)) {
+				g.mode = GEN; //packet generation
+			} 
+			break;
+		
 		case 'f':
 			for (fn = func; fn->key; fn++) {
 				if (!strcmp(fn->key, optarg))
@@ -587,7 +616,7 @@ main(int arc, char **argv)
 			g.dst_mac.name = optarg;
 			break;
 
-		case 'S': // source mac 
+		case 'S': // source mac
 			g.src_mac.name = optarg;
 			break;*/
 		case 'v':
@@ -652,6 +681,9 @@ main(int arc, char **argv)
 	extract_ip_range(&g.dst_ip);
 	extract_mac_range(&g.src_mac);
 	extract_mac_range(&g.dst_mac);
+	
+	if(g.mode==GEN && g.proto==ALL_PROTO)
+	usage();
 
 	if (g.src_ip.start != g.src_ip.end ||
 	    g.src_ip.port0 != g.src_ip.port1 ||
