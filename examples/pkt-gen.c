@@ -405,7 +405,7 @@ main(int arc, char **argv)
 	int devqueues = 1;	/* how many device queues */
 	int opt_index=0;	/* index of long options (getopt_long) */
 	int index=0;
-	//int param_num=0;	/* number of parameters of long options */
+	int incorrect_param=1;	/* long option parameter validity: 1=not correct, 0=correct */
 
 	char *mode; 	/* parameters of long options --arg*/
 
@@ -452,10 +452,14 @@ main(int arc, char **argv)
 			  //--data case
 			  if(strcmp(long_options[opt_index].name, "data") == 0)
 			  {
+			    incorrect_param=1;
+			    
 			    for(j=0; j<DATA_PARAM_SIZE; j++)
 			    {
-			      if(strstr(argv[index], data_param[j]) != NULL)
+			      if(strstr(argv[index], data_param[j]) != NULL) //check validity of the parameter
 			      {
+				incorrect_param = 0; //parameter argv[index] exists in --data options
+				
 				if(j==0) //dst_ip
 				  g.dst_ip.name = &argv[index][strlen(data_param[j])];
 
@@ -473,40 +477,51 @@ main(int arc, char **argv)
 
 				if(j==5) //proto
 				{
-                    mode = &argv[index][strlen(data_param[j])];
-                    if (!strcmp(mode, "null"))
-                        g.proto = IPPROTO_UDP;
-                    else if (!strncmp(mode, "UDP", 3) || !strncmp(mode, "udp", 3))
-                        g.proto = IPPROTO_UDP;
-                    else if (!strncmp(mode, "ICMP", 4) || !strncmp(mode, "icmp", 4))
-                        g.proto = IPPROTO_ICMP;
-				     else if (!strncmp(mode, "ALL", 3) || !strncmp(mode, "all", 3))
-                        g.proto = ALL_PROTO;
+				    mode = &argv[index][strlen(data_param[j])];
+				    if (!strcmp(mode, "null"))
+					g.proto = IPPROTO_UDP;
+				    else if (!strncmp(mode, "UDP", 3) || !strncmp(mode, "udp", 3))
+					g.proto = IPPROTO_UDP;
+				    else if (!strncmp(mode, "ICMP", 4) || !strncmp(mode, "icmp", 4))
+					g.proto = IPPROTO_ICMP;
+						    else if (!strncmp(mode, "ALL", 3) || !strncmp(mode, "all", 3))
+					g.proto = ALL_PROTO;
 
 				}
 			      }
-			    }
-			  }
+			     }
+			     if(incorrect_param == 1)
+				printf("Invalid parameter in --data option\n");
+			   }
 
 
 			  //--arg case
 			  if(strcmp(long_options[opt_index].name, "arg") == 0)
 			  {
-			    for(j=0; j<ARG_PARAM_SIZE; j++)
-			    {
-			      if(j==0) //mode
+			      incorrect_param=1;
+			      
+			      for(j=0; j<ARG_PARAM_SIZE; j++)
 			      {
-                    mode = &argv[index][strlen(arg_param[j])];
+				if(strstr(argv[index], arg_param[j]) != NULL) //check validity of the parameter
+				{
+				  incorrect_param = 0; //parameter argv[index] exists in --arg options
+				  
+				  if(j==0) //mode
+				  {
+				    mode = &argv[index][strlen(arg_param[j])];
 
-                    if (!strcmp(mode, "null")) {
-                        g.mode = GEN; //packet generation
-                    } else if (!strncmp(mode, "read", 4)) {
-                        g.mode = R_PCAP; //read to pcap file
-                    } else if (!strncmp(mode, "gen", 3)) {
-                        g.mode = GEN; //packet generation
-                    }
+				    if (!strcmp(mode, "null")) {
+					g.mode = GEN; //packet generation
+				    } else if (!strncmp(mode, "read", 4)) {
+					g.mode = R_PCAP; //read to pcap file
+				    } else if (!strncmp(mode, "gen", 3)) {
+					g.mode = GEN; //packet generation
+				    }
+				  }
+				}
 			      }
-			    }
+			      if(incorrect_param == 1)
+				printf("Invalid parameter in --arg option\n");
 			  }
 
 			  index++;
