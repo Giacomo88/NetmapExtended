@@ -260,7 +260,7 @@ usage(void)
 	fprintf(stderr,
 		"Usage:\n"
 		"%s arguments\n"
-		"\t--data param_name=VALUE   	parameters for packet generator: dst_ip src_ip dst-mac src-mac\n"
+		"\t--data param_name=VALUE   	parameters for packet generator: dst_ip src_ip dst-mac src-mac pcap-file\n"
 		"\t--arg mode=VALUE   		available mode are: read gen\n"
 		"\t-i interface			interface name\n"
 		"\t-f function			tx rx ping pong\n"
@@ -387,7 +387,7 @@ const char *data_param[] = {
     "pcap-file=",
     "proto="};
 #define DATA_PARAM_SIZE 6
-    
+
 //parameters of option --arg
 const char *arg_param[] = {
     "mode="};
@@ -429,8 +429,8 @@ main(int arc, char **argv)
 	g.frags = 1;
 	g.nmr_config = "";
 	g.virt_header = 0;
-	g.mode = GEN;	
-	g.proto=IPPROTO_UDP;
+	g.mode = GEN;
+	g.proto = IPPROTO_UDP;
 
 	while ( (ch = getopt_long(arc, argv,
 			"a:f:F:n:i:Il:b:c:o:p:T:w:WvR:XC:H:e:m:", long_options, &opt_index)) != -1) {
@@ -448,7 +448,7 @@ main(int arc, char **argv)
 
 			while(index < arc && argv[index][0] != '-')
 			{
-			  
+
 			  //--data case
 			  if(strcmp(long_options[opt_index].name, "data") == 0)
 			  {
@@ -467,25 +467,28 @@ main(int arc, char **argv)
 
 				if(j==3) //src_mac
 				  g.src_mac.name = &argv[index][strlen(data_param[j])];
-				  
+
 				if(j==4) //p-cap file
 				  g.pcap_file = &argv[index][strlen(data_param[j])];
-				  
+
 				if(j==5) //proto
 				{
-				    if (!strcmp(&argv[index][strlen(data_param[j])], "UDP")) 
-					g.proto = IPPROTO_UDP;
-				    else if (!strcmp(&argv[index][strlen(data_param[j])], "ICMP")) 
-					g.proto = IPPROTO_ICMP;
-				    else if (!strcmp(&argv[index][strlen(data_param[j])], "ALL")) 
-					g.proto = ALL_PROTO;
+                    mode = &argv[index][strlen(data_param[j])];
+                    if (!strcmp(mode, "null"))
+                        g.proto = IPPROTO_UDP;
+                    else if (!strncmp(mode, "UDP", 3) || !strncmp(mode, "udp", 3))
+                        g.proto = IPPROTO_UDP;
+                    else if (!strncmp(mode, "ICMP", 4) || !strncmp(mode, "icmp", 4))
+                        g.proto = IPPROTO_ICMP;
+				     else if (!strncmp(mode, "ALL", 3) || !strncmp(mode, "all", 3))
+                        g.proto = ALL_PROTO;
 
 				}
 			      }
 			    }
 			  }
 
-			  
+
 			  //--arg case
 			  if(strcmp(long_options[opt_index].name, "arg") == 0)
 			  {
@@ -493,24 +496,24 @@ main(int arc, char **argv)
 			    {
 			      if(j==0) //mode
 			      {
-				mode = &argv[index][strlen(arg_param[j])];
-				
-				if (!strcmp(mode, "null")) {
-				    g.mode = GEN; //packet generation 
-				} else if (!strncmp(mode, "read", 4)) {
-				    g.mode = R_PCAP; //read to pcap file
-				} else if (!strncmp(mode, "gen", 3)) {
-				    g.mode = GEN; //packet generation
-				}
+                    mode = &argv[index][strlen(arg_param[j])];
+
+                    if (!strcmp(mode, "null")) {
+                        g.mode = GEN; //packet generation
+                    } else if (!strncmp(mode, "read", 4)) {
+                        g.mode = R_PCAP; //read to pcap file
+                    } else if (!strncmp(mode, "gen", 3)) {
+                        g.mode = GEN; //packet generation
+                    }
 			      }
 			    }
 			  }
-			  
+
 			  index++;
 			}
 
 			break;
-		  
+
 		case 'n':
 			g.npackets = atoi(optarg);
 			break;
@@ -523,19 +526,19 @@ main(int arc, char **argv)
 			}
 			g.frags = i;
 			break;
-		
+
 	/*	case 'M':
 			D("mode is %s", optarg);
-		
+
 			if (!strcmp(optarg, "null")) {
-				g.mode = GEN; //packet generation 
+				g.mode = GEN; //packet generation
 			} else if (!strncmp(optarg, "read", 4)) {
 				g.mode = R_PCAP; //read to pcap file
 			} else if (!strncmp(optarg, "gen", 3)) {
 				g.mode = GEN; //packet generation
-			} 
+			}
 			break;*/
-		
+
 		case 'f':
 			for (fn = func; fn->key; fn++) {
 				if (!strcmp(fn->key, optarg))
@@ -692,9 +695,18 @@ main(int arc, char **argv)
 	extract_ip_range(&g.dst_ip);
 	extract_mac_range(&g.src_mac);
 	extract_mac_range(&g.dst_mac);
-	
+
 	if(g.mode==GEN && g.proto==ALL_PROTO)
-	usage();
+	{
+        D("Please, select only one protocol for gen modality");
+        usage();
+	}
+	if(g.mode==R_PCAP && g.pcap_file==NULL)
+	{
+        D("Please, input a file for using read modality");
+        usage();
+	}
+
 
 	if (g.src_ip.start != g.src_ip.end ||
 	    g.src_ip.port0 != g.src_ip.port1 ||
