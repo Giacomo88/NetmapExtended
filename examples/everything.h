@@ -59,7 +59,7 @@
 #define IFF_PPROMISC   IFF_PROMISC
 #include <net/if_dl.h>  /* LLADDR */
 #define clock_gettime(a,b)      \
-        do {struct timespec t0 = {0,0}; *(b) = t0; } while (0)
+		do {struct timespec t0 = {0,0}; *(b) = t0; } while (0)
 #endif  /* __APPLE__ */
 
 #define SKIP_PAYLOAD 1 /* do not check payload. XXX unused */

@@ -21,7 +21,7 @@ pinger_body(void *data)
 	if(targ->g->proto == IPPROTO_UDP){
 		frame = &targ->pkt_udp;
 		frame += sizeof(targ->pkt_udp.vh) - targ->g->virt_header;
-		}
+	}
 	else{
 		frame = &targ->pkt_icmp;
 		frame += sizeof(targ->pkt_icmp.vh) - targ->g->virt_header;
@@ -41,34 +41,34 @@ pinger_body(void *data)
 		struct netmap_ring *ring = NETMAP_TXRING(nifp, 0);
 		struct netmap_slot *slot;
 		char *p;
-	    for (i = 0; i < 1; i++) { /* XXX why the loop for 1 pkt ? */
-		slot = &ring->slot[ring->cur];
-		slot->len = size;
-		p = NETMAP_BUF(ring, slot->buf_idx);
+		for (i = 0; i < 1; i++) { /* XXX why the loop for 1 pkt ? */
+			slot = &ring->slot[ring->cur];
+			slot->len = size;
+			p = NETMAP_BUF(ring, slot->buf_idx);
 
-		if (nm_ring_empty(ring)) {
-			D("-- ouch, cannot send");
-		} else {
-			struct tstamp *tp;
-			nm_pkt_copy(frame, p, size);
-			clock_gettime(CLOCK_REALTIME_PRECISE, &ts);
-			bcopy(&sent, p+42, sizeof(sent));
-			tp = (struct tstamp *)(p+46);
-			tp->sec = (uint32_t)ts.tv_sec;
-			tp->nsec = (uint32_t)ts.tv_nsec;
-			sent++;
-			ring->head = ring->cur = nm_ring_next(ring, ring->cur);
+			if (nm_ring_empty(ring)) {
+				D("-- ouch, cannot send");
+			} else {
+				struct tstamp *tp;
+				nm_pkt_copy(frame, p, size);
+				clock_gettime(CLOCK_REALTIME_PRECISE, &ts);
+				bcopy(&sent, p+42, sizeof(sent));
+				tp = (struct tstamp *)(p+46);
+				tp->sec = (uint32_t)ts.tv_sec;
+				tp->nsec = (uint32_t)ts.tv_nsec;
+				sent++;
+				ring->head = ring->cur = nm_ring_next(ring, ring->cur);
+			}
 		}
-	    }
 		/* should use a parameter to decide how often to send */
 		if (poll(&pfd, 1, 3000) <= 0) {
 			D("poll error/timeout on queue %d: %s", targ->me,
-				strerror(errno));
+					strerror(errno));
 			continue;
 		}
 		/* see what we got back */
 		for (i = targ->nmd->first_tx_ring;
-			i <= targ->nmd->last_tx_ring; i++) {
+				i <= targ->nmd->last_tx_ring; i++) {
 			ring = NETMAP_RXRING(nifp, i);
 			while (!nm_ring_empty(ring)) {
 				uint32_t seq;
@@ -88,7 +88,7 @@ pinger_body(void *data)
 					ts.tv_sec--;
 				}
 				if (1) D("seq %d/%d delta %d.%09d", seq, sent,
-					(int)ts.tv_sec, (int)ts.tv_nsec);
+						(int)ts.tv_sec, (int)ts.tv_nsec);
 				if (ts.tv_nsec < (int)min)
 					min = ts.tv_nsec;
 				count ++;
@@ -107,7 +107,7 @@ pinger_body(void *data)
 		}
 		if (ts.tv_sec >= 1) {
 			D("count %d min %d av %d",
-				count, min, av/count);
+					count, min, av/count);
 			count = 0;
 			av = 0;
 			min = 100000000;

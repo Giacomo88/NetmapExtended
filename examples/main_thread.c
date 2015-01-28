@@ -23,7 +23,7 @@ tx_output(uint64_t sent, int size, double delta)
 	char b1[40], b2[80], b3[80];
 
 	printf("Sent %llu packets, %d bytes each, in %.2f seconds.\n",
-	       (unsigned long long)sent, size, delta);
+			(unsigned long long)sent, size, delta);
 	if (delta == 0)
 		delta = 1e-6;
 	if (size < 60)		/* correct for min packet size */
@@ -34,7 +34,7 @@ tx_output(uint64_t sent, int size, double delta)
 	raw_bw = (8.0 * (size + 24) * sent) / delta;
 
 	printf("Speed: %spps Bandwidth: %sbps (raw %sbps)\n",
-		norm(b1, pps), norm(b2, bw), norm(b3, raw_bw) );
+			norm(b1, pps), norm(b2, bw), norm(b3, raw_bw) );
 }
 
 
@@ -45,7 +45,7 @@ rx_output(uint64_t received, double delta)
 	char b1[40];
 
 	printf("Received %llu packets, in %.2f seconds.\n",
-		(unsigned long long) received, delta);
+			(unsigned long long) received, delta);
 
 	if (delta == 0)
 		delta = 1e-6;
@@ -70,8 +70,8 @@ static __inline struct timespec
 timeval2spec(const struct timeval *a)
 {
 	struct timespec ts = {
-		.tv_sec = a->tv_sec,
-		.tv_nsec = a->tv_usec * 1000
+			.tv_sec = a->tv_sec,
+			.tv_nsec = a->tv_usec * 1000
 	};
 	return ts;
 }
@@ -80,8 +80,8 @@ static __inline struct timeval
 timespec2val(const struct timespec *a)
 {
 	struct timeval tv = {
-		.tv_sec = a->tv_sec,
-		.tv_usec = a->tv_nsec / 1000
+			.tv_sec = a->tv_sec,
+			.tv_usec = a->tv_nsec / 1000
 	};
 	return tv;
 }
@@ -119,9 +119,9 @@ main_thread(struct glob_arg *g, struct targ *targs)
 		npkts = my_count - prev;
 		pps = (npkts*1000000 + usec/2) / usec;
 		D("%llu pps (%llu pkts in %llu usec)",
-			(unsigned long long)pps,
-			(unsigned long long)npkts,
-			(unsigned long long)usec);
+				(unsigned long long)pps,
+				(unsigned long long)npkts,
+				(unsigned long long)usec);
 		prev = my_count;
 		toc = now;
 		if (done == g->nthreads)

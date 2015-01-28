@@ -1,9 +1,9 @@
 #include "everything.h"
 
-	pcap_t *head=NULL, *next=NULL;
-	int virt_header;
-	uint8_t protocol;
-	char *filename=NULL;
+pcap_t *head=NULL, *next=NULL;
+int virt_header;
+uint8_t protocol;
+char *filename=NULL;
 
 static __inline struct timespec
 timespec_add(struct timespec a, struct timespec b)
@@ -48,12 +48,12 @@ wait_time(struct timespec ts)
 #ifdef __APPLE__
 static inline void CPU_ZERO(cpuset_t *p)
 {
-        *p = 0;
+	*p = 0;
 }
 
 static inline void CPU_SET(uint32_t i, cpuset_t *p)
 {
-        *p |= 1<< (i & 0x3f);
+	*p |= 1<< (i & 0x3f);
 }
 #endif  /* __APPLE__ */
 
@@ -90,8 +90,8 @@ dump_payload(char *p, int len, struct netmap_ring *ring, int cur)
 	/* get the length in ASCII of the length of the packet. */
 
 	printf("ring %p cur %5d [buf %6d flags 0x%04x len %5d]\n",
-		ring, cur, ring->slot[cur].buf_idx,
-		ring->slot[cur].flags, len);
+			ring, cur, ring->slot[cur].buf_idx,
+			ring->slot[cur].flags, len);
 	/* hexdump routine */
 	for (i = 0; i < len; ) {
 		memset(buf, sizeof(buf), ' ');
@@ -102,7 +102,7 @@ dump_payload(char *p, int len, struct netmap_ring *ring, int cur)
 		i = i0;
 		for (j=0; j < 16 && i < len; i++, j++)
 			sprintf(buf+7+j + 48, "%c",
-				isprint(p[i]) ? p[i] : '.');
+					isprint(p[i]) ? p[i] : '.');
 		printf("%s\n", buf);
 	}
 }
@@ -132,37 +132,37 @@ update_addresses_udp(struct pkt_udp *pkt, struct glob_arg *g)
 	struct ip *ip = &pkt->ip;
 	struct udphdr *udp = &pkt->udp;
 
-    do {
-	p = ntohs(udp->uh_sport);
-	if (p < g->src_ip.port1) { /* just inc, no wrap */
-		udp->uh_sport = htons(p + 1);
-		break;
-	}
-	udp->uh_sport = htons(g->src_ip.port0);
+	do {
+		p = ntohs(udp->uh_sport);
+		if (p < g->src_ip.port1) { /* just inc, no wrap */
+			udp->uh_sport = htons(p + 1);
+			break;
+		}
+		udp->uh_sport = htons(g->src_ip.port0);
 
-	a = ntohl(ip->ip_src.s_addr);
-	if (a < g->src_ip.end) { /* just inc, no wrap */
-		ip->ip_src.s_addr = htonl(a + 1);
-		break;
-	}
-	ip->ip_src.s_addr = htonl(g->src_ip.start);
+		a = ntohl(ip->ip_src.s_addr);
+		if (a < g->src_ip.end) { /* just inc, no wrap */
+			ip->ip_src.s_addr = htonl(a + 1);
+			break;
+		}
+		ip->ip_src.s_addr = htonl(g->src_ip.start);
 
-	udp->uh_sport = htons(g->src_ip.port0);
-	p = ntohs(udp->uh_dport);
-	if (p < g->dst_ip.port1) { /* just inc, no wrap */
-		udp->uh_dport = htons(p + 1);
-		break;
-	}
-	udp->uh_dport = htons(g->dst_ip.port0);
+		udp->uh_sport = htons(g->src_ip.port0);
+		p = ntohs(udp->uh_dport);
+		if (p < g->dst_ip.port1) { /* just inc, no wrap */
+			udp->uh_dport = htons(p + 1);
+			break;
+		}
+		udp->uh_dport = htons(g->dst_ip.port0);
 
-	a = ntohl(ip->ip_dst.s_addr);
-	if (a < g->dst_ip.end) { /* just inc, no wrap */
-		ip->ip_dst.s_addr = htonl(a + 1);
-		break;
-	}
-	ip->ip_dst.s_addr = htonl(g->dst_ip.start);
-    } while (0);
-    // update checksum
+		a = ntohl(ip->ip_dst.s_addr);
+		if (a < g->dst_ip.end) { /* just inc, no wrap */
+			ip->ip_dst.s_addr = htonl(a + 1);
+			break;
+		}
+		ip->ip_dst.s_addr = htonl(g->dst_ip.start);
+	} while (0);
+	// update checksum
 }
 
 static void
@@ -174,92 +174,84 @@ update_addresses_icmp(struct pkt_icmp *pkt, struct glob_arg *g)
 	//struct udphdr *udp = &pkt->udp;
 	//struct icmphdr *icmp = &pkt->icmp;
 
-    do {
+	do {
+		a = ntohl(ip->ip_src.s_addr);
+		if (a < g->src_ip.end) { // just inc, no wrap
+			ip->ip_src.s_addr = htonl(a + 1);
+			break;
+		}
+		ip->ip_src.s_addr = htonl(g->src_ip.start);
 
-	a = ntohl(ip->ip_src.s_addr);
-	if (a < g->src_ip.end) { // just inc, no wrap
-		ip->ip_src.s_addr = htonl(a + 1);
-		break;
-	}
-	ip->ip_src.s_addr = htonl(g->src_ip.start);
-
-	a = ntohl(ip->ip_dst.s_addr);
-	if (a < g->dst_ip.end) { // just inc, no wrap
-		ip->ip_dst.s_addr = htonl(a + 1);
-		break;
-	}
-	ip->ip_dst.s_addr = htonl(g->dst_ip.start);
-    } while (0);
-    // update checksum
+		a = ntohl(ip->ip_dst.s_addr);
+		if (a < g->dst_ip.end) { // just inc, no wrap
+			ip->ip_dst.s_addr = htonl(a + 1);
+			break;
+		}
+		ip->ip_dst.s_addr = htonl(g->dst_ip.start);
+	} while (0);
+	// update checksum
 }
 
 static void pcap_reader(u_char **buffer,int *len, int *type)
 {
-  	struct pcap_pkthdr header; // The header that pcap gives us
-  	const u_char *packet; // The actual packet
-    int size_vh = sizeof(struct virt_header);
-    u_char *pad = (u_char*)malloc(size_vh);
-    memset(pad,0, size_vh);
+	struct pcap_pkthdr header; // The header that pcap gives us
+	const u_char *packet; // The actual packet
+	int size_vh = sizeof(struct virt_header);
+	u_char *pad = (u_char*)malloc(size_vh);
+	memset(pad,0, size_vh);
 
-	if(head==NULL)
-    {
-        pcap_close(head);
-        	char errbuf[PCAP_ERRBUF_SIZE]; //not sure what to do with this, oh well
-    		head = pcap_open_offline(filename, errbuf);   //call pcap library function
+	if(head==NULL) {
+		pcap_close(head);
+		char errbuf[PCAP_ERRBUF_SIZE];
+		head = pcap_open_offline(filename, errbuf);   //call pcap library function
 
-   		if (head == NULL) {
-     			 fprintf(stderr,"Couldn't open pcap file %s: %s\n",filename , errbuf);
-      			/*return(2);*/
-        }
-    }
-
-    while (1) {
-
-    		if((packet = pcap_next(head,&header))==NULL)
-    		{
-    			pcap_close(head);
-                char errbuf[PCAP_ERRBUF_SIZE]; //not sure what to do with this, oh well
-                head = pcap_open_offline(filename, errbuf);   //call pcap library function
-
-                if (head == NULL) {
-                         fprintf(stderr,"Couldn't open pcap file %s: %s\n",filename , errbuf);
-                        /*return(2);*/
-                }
-    			continue;
-    		}
-
-
-          u_char *pkt_ptr = (u_char *)packet; //cast a pointer to the packet data
-
-          //parse the first (ethernet) header, grabbing the type field
-          int ether_type = ((int)(pkt_ptr[12]) << 8) | (int)pkt_ptr[13];
-          int ether_offset = 0;
-
-          if (ether_type == ETHERTYPE_IP) //most common IPv4
-            ether_offset = 14;
-          else
-            continue; // non mi importa dei non IPV4
-
-    struct ip *ip_hdr = (struct ip *)&pkt_ptr[ether_offset]; //point to an IP header structure
-
- if(ip_hdr->ip_p == IPPROTO_UDP || ip_hdr->ip_p == IPPROTO_ICMP)
-	{
-		 if(protocol == ALL_PROTO || ip_hdr->ip_p==protocol)
-        {
-            *type = ip_hdr->ip_p;
-            *len = header.len;
-            if(*buffer!=NULL) free(*buffer);
-            *buffer = (u_char*)malloc(header.len + size_vh);
-            memcpy(*buffer,pad,size_vh);
-            memcpy(*buffer + size_vh, pkt_ptr, header.len);
-            break;
+		if (head == NULL) {
+			fprintf(stderr,"Couldn't open pcap file %s: %s\n",filename , errbuf);
+			/*return(2);*/
 		}
-		else
-            continue;
 	}
-	else
-		continue;
-    }
+
+	while (1) {
+
+		if((packet = pcap_next(head,&header))==NULL) {
+			pcap_close(head);
+			char errbuf[PCAP_ERRBUF_SIZE]; //not sure what to do with this, oh well
+			head = pcap_open_offline(filename, errbuf);   //call pcap library function
+
+			if (head == NULL) {
+				fprintf(stderr,"Couldn't open pcap file %s: %s\n",filename , errbuf);
+				/*return(2);*/
+			}
+			continue;
+		}
+
+		u_char *pkt_ptr = (u_char *)packet; //cast a pointer to the packet data
+
+		//parse the first (ethernet) header, grabbing the type field
+		int ether_type = ((int)(pkt_ptr[12]) << 8) | (int)pkt_ptr[13];
+		int ether_offset = 0;
+
+		if (ether_type == ETHERTYPE_IP) //most common IPv4
+			ether_offset = 14;
+		else
+			continue; // non mi importa dei non IPV4
+
+		struct ip *ip_hdr = (struct ip *)&pkt_ptr[ether_offset]; //point to an IP header structure
+
+		if(ip_hdr->ip_p == IPPROTO_UDP || ip_hdr->ip_p == IPPROTO_ICMP) {
+			if(protocol == ALL_PROTO || ip_hdr->ip_p==protocol) {
+				*type = ip_hdr->ip_p;
+				*len = header.len;
+				if(*buffer!=NULL) free(*buffer);
+				*buffer = (u_char*)malloc(header.len + size_vh);
+				memcpy(*buffer,pad,size_vh);
+				memcpy(*buffer + size_vh, pkt_ptr, header.len);
+				break;
+			} else
+				continue;
+		}else
+			continue;
+	}
 }
 
 /*
@@ -275,8 +267,8 @@ send_packets(struct netmap_ring *ring, struct pkt_udp *pkt_udp, struct pkt_icmp 
 
 	u_int n, sent, cur = ring->cur;
 	u_int fcnt;
-    int type;
-    u_char *buffer=NULL;
+	int type;
+	u_char *buffer=NULL;
 
 	n = nm_ring_space(ring);
 	if (n < count)
@@ -306,39 +298,34 @@ send_packets(struct netmap_ring *ring, struct pkt_udp *pkt_udp, struct pkt_icmp 
 			slot->ptr = (uint64_t)((uintptr_t)frame);
 		} else if (options & OPT_COPY) {
 			nm_pkt_copy(frame, p, size);
-			if (fcnt == nfrags)
-			{
-				if(g->mode==GEN)
-				{
+			if (fcnt == nfrags) {
+				if(g->mode==GEN) {
 					if(g->proto==IPPROTO_ICMP)
 						update_addresses_icmp(pkt_icmp, g);
-					else if(g->proto==IPPROTO_UDP)
+					else
 						update_addresses_udp(pkt_udp, g);
+				} else {
+					pcap_reader(&buffer,&size, &type);
+					frame = buffer;
+					frame += sizeof(pkt_icmp->vh) - virt_header;
+					size += virt_header;
 				}
-                else
-                {
-                    pcap_reader(&buffer,&size, &type);
-                    frame = buffer;
-                    frame += sizeof(pkt_icmp->vh) - virt_header;
-                    size += virt_header;
-                }
 			}
 		} else if (options & OPT_MEMCPY) {
 			memcpy(p, frame, size);
-			if (fcnt == nfrags)
-				{
+			if (fcnt == nfrags) {
+				if(g->mode==GEN) {
 					if(g->proto==IPPROTO_ICMP)
 						update_addresses_icmp(pkt_icmp, g);
-					else if(g->proto==IPPROTO_UDP)
+					else
 						update_addresses_udp(pkt_udp, g);
-                    else if(g->proto==R_PCAP)
-                    {
-                        pcap_reader(&buffer,&size, &type);
-                        frame = buffer;
-                        frame += sizeof(pkt_icmp->vh) - virt_header;
-                        size += virt_header;
-                    }
+				} else {
+					pcap_reader(&buffer,&size, &type);
+					frame = buffer;
+					frame += sizeof(pkt_icmp->vh) - virt_header;
+					size += virt_header;
 				}
+			}
 		} else if (options & OPT_PREFETCH) {
 			__builtin_prefetch(p);
 		}
@@ -379,33 +366,29 @@ sender_body(void *data)
 
 	struct pkt_udp *pkt_udp = &targ->pkt_udp;
 	struct pkt_icmp *pkt_icmp = &targ->pkt_icmp;
-    virt_header = targ->g->virt_header;
+	virt_header = targ->g->virt_header;
 
 	protocol= targ->g->proto;
 
-	if(targ->g->mode==GEN)
-	{
-		if(targ->g->proto == IPPROTO_UDP){
+	if(targ->g->mode==GEN) {
+		if(targ->g->proto == IPPROTO_UDP) {
 			frame = pkt_udp;
 			frame += sizeof(pkt_udp->vh) - targ->g->virt_header;
 			size = targ->g->pkt_size + targ->g->virt_header;
-		}
-		else if(targ->g->proto == IPPROTO_ICMP){
+		} else if(targ->g->proto == IPPROTO_ICMP) {
 			frame = pkt_icmp;
 			frame += sizeof(pkt_icmp->vh) - targ->g->virt_header;
 			size = targ->g->pkt_size + targ->g->virt_header;
 		}
-	}
-	else
-	{
-        filename = targ->g->pcap_file;
+	} else {
+		filename = targ->g->pcap_file;
 		char errbuf[PCAP_ERRBUF_SIZE]; //not sure what to do with this, oh well
-    		head = pcap_open_offline(filename, errbuf);   //call pcap library function
+		head = pcap_open_offline(filename, errbuf);   //call pcap library function
 
-   		if (head == NULL) {
-     			 fprintf(stderr,"Couldn't open pcap file %s: %s\n",filename , errbuf);
-      			/*return(2);*/
-        }
+		if (head == NULL) {
+			fprintf(stderr,"Couldn't open pcap file %s: %s\n",filename , errbuf);
+			/*return(2);*/
+		}
 		pcap_reader(&buffer,&size, &type);
 		frame = buffer;
 		frame += sizeof(pkt_icmp->vh) - targ->g->virt_header;
@@ -424,167 +407,150 @@ sender_body(void *data)
 		wait_time(targ->tic);
 		nexttime = targ->tic;
 	}
-        if (targ->g->dev_type == DEV_TAP) {
-	    D("writing to file desc %d", targ->g->main_fd);
+	if (targ->g->dev_type == DEV_TAP) {
+		D("writing to file desc %d", targ->g->main_fd);
 
-	    for (i = 0; !targ->cancel && (n == 0 || sent < n); i++) {
-		if (write(targ->g->main_fd, frame, size) != -1)
-			sent++;
-	if(targ->g->mode==GEN)
-	{
-        if(targ->g->proto == IPPROTO_UDP){
-            update_addresses_udp(pkt_udp, targ->g);
-		}
-		else if(targ->g->proto == IPPROTO_ICMP)
-			update_addresses_icmp(pkt_icmp, targ->g);
-	}
-	else
-	{
-		free(buffer);
-		pcap_reader(&buffer,&size, &type);
-		frame = buffer;
-		frame += sizeof(pkt_icmp->vh) - targ->g->virt_header;
-		size += targ->g->virt_header;
-	}
-
-
-		if (i > 10000) {
-			targ->count = sent;
-			i = 0;
-		}
-	    }
-#ifndef NO_PCAP
-    } else if (targ->g->dev_type == DEV_PCAP) {
-	    pcap_t *p = targ->g->p;
-
-	    for (i = 0; !targ->cancel && (n == 0 || sent < n); i++) {
-		if (pcap_inject(p, frame, size) != -1)
-			sent++;
-	if(targ->g->mode==GEN)
-	{
-		  if(targ->g->proto == IPPROTO_UDP){
-            update_addresses_udp(pkt_udp, targ->g);
-		}
-		else if(targ->g->proto == IPPROTO_ICMP)
-		update_addresses_icmp(pkt_icmp, targ->g);
-	}
-	else
-	{
-		free(buffer);
-		pcap_reader(&buffer,&size, &type);
-		frame = buffer;
-		frame += sizeof(pkt_icmp->vh) - targ->g->virt_header;
-		size += targ->g->virt_header;
-	}
-
-		if (i > 10000) {
-			targ->count = sent;
-			i = 0;
-		}
-	    }
-#endif /* NO_PCAP */
-    } else {
-	int tosend = 0;
-	int frags = targ->g->frags;
-        nifp = targ->nmd->nifp;
-	while (!targ->cancel && (n == 0 || sent < n)) {
-
-		if (rate_limit && tosend <= 0) {
-			tosend = targ->g->burst;
-			nexttime = timespec_add(nexttime, targ->g->tx_period);
-			wait_time(nexttime);
-		}
-
-		/*
-		 * wait for available room in the send queue(s)
-		 */
-		if (poll(&pfd, 1, 2000) <= 0) {
-			if (targ->cancel)
-				break;
-			D("poll error/timeout on queue %d: %s", targ->me,
-				strerror(errno));
-			// goto quit;
-		}
-		if (pfd.revents & POLLERR) {
-			D("poll error");
-			goto quit;
-		}
-		/*
-		 * scan our queues and send on those with room
-		 */
-		if (options & OPT_COPY && sent > 100000 && !(targ->g->options & OPT_COPY) ) {
-			D("drop copy");
-			options &= ~OPT_COPY;
-		}
-		for (i = targ->nmd->first_tx_ring; i <= targ->nmd->last_tx_ring; i++) {
-			int m=0, limit = rate_limit ?  tosend : targ->g->burst;
-			if (n > 0 && n - sent < limit)
-				limit = n - sent;
-			txring = NETMAP_TXRING(nifp, i);
-			if (nm_ring_empty(txring))
-				continue;
-			if (frags > 1)
-				limit = ((limit + frags - 1) / frags) * frags;
-			if(targ->g->mode==GEN)
-			{
+		for (i = 0; !targ->cancel && (n == 0 || sent < n); i++) {
+			if (write(targ->g->main_fd, frame, size) != -1)
+				sent++;
+			if(targ->g->mode==GEN) {
 				if(targ->g->proto == IPPROTO_UDP)
-							m = send_packets(txring, pkt_udp, NULL, frame, size, targ->g,
-						 limit, options, frags);
-				else if(targ->g->proto == IPPROTO_ICMP)
-					m = send_packets(txring, NULL, pkt_icmp, frame, size, targ->g,
-						 limit, options, frags);
-			}
-			else
-			{
-				if(type == IPPROTO_UDP)
-				{
-				m = send_packets(txring, pkt_udp, NULL, frame, size, targ->g,
-						 limit, options, frags);
-				}
+					update_addresses_udp(pkt_udp, targ->g);
 				else
-				{
-				m = send_packets(txring, NULL, pkt_icmp, frame, size, targ->g,
-						 limit, options, frags);
+					update_addresses_icmp(pkt_icmp, targ->g);
+			} else {
+				pcap_reader(&buffer,&size, &type);
+				frame = buffer;
+				frame += sizeof(pkt_icmp->vh) - targ->g->virt_header;
+				size += targ->g->virt_header;
+			}
+
+			if (i > 10000) {
+				targ->count = sent;
+				i = 0;
+			}
+		}
+#ifndef NO_PCAP
+	} else if (targ->g->dev_type == DEV_PCAP) {
+		pcap_t *p = targ->g->p;
+
+		for (i = 0; !targ->cancel && (n == 0 || sent < n); i++) {
+			if (pcap_inject(p, frame, size) != -1)
+				sent++;
+			if(targ->g->mode==GEN) {
+				if(targ->g->proto == IPPROTO_UDP)
+					update_addresses_udp(pkt_udp, targ->g);
+				else
+					update_addresses_icmp(pkt_icmp, targ->g);
+			} else {
+				pcap_reader(&buffer,&size, &type);
+				frame = buffer;
+				frame += sizeof(pkt_icmp->vh) - targ->g->virt_header;
+				size += targ->g->virt_header;
+			}
+
+			if (i > 10000) {
+				targ->count = sent;
+				i = 0;
+			}
+		}
+#endif /* NO_PCAP */
+	} else {
+		int tosend = 0;
+		int frags = targ->g->frags;
+		nifp = targ->nmd->nifp;
+		while (!targ->cancel && (n == 0 || sent < n)) {
+
+			if (rate_limit && tosend <= 0) {
+				tosend = targ->g->burst;
+				nexttime = timespec_add(nexttime, targ->g->tx_period);
+				wait_time(nexttime);
+			}
+
+			/*
+			 * wait for available room in the send queue(s)
+			 */
+			if (poll(&pfd, 1, 2000) <= 0) {
+				if (targ->cancel)
+					break;
+				D("poll error/timeout on queue %d: %s", targ->me,
+						strerror(errno));
+				// goto quit;
+			}
+			if (pfd.revents & POLLERR) {
+				D("poll error");
+				goto quit;
+			}
+			/*
+			 * scan our queues and send on those with room
+			 */
+			if (options & OPT_COPY && sent > 100000 && !(targ->g->options & OPT_COPY) ) {
+				D("drop copy");
+				options &= ~OPT_COPY;
+			}
+			for (i = targ->nmd->first_tx_ring; i <= targ->nmd->last_tx_ring; i++) {
+				int m=0, limit = rate_limit ?  tosend : targ->g->burst;
+				if (n > 0 && n - sent < limit)
+					limit = n - sent;
+				txring = NETMAP_TXRING(nifp, i);
+				if (nm_ring_empty(txring))
+					continue;
+				if (frags > 1)
+					limit = ((limit + frags - 1) / frags) * frags;
+
+				if(targ->g->mode == GEN) {
+					if(targ->g->proto == IPPROTO_UDP)
+						m = send_packets(txring, pkt_udp, NULL, frame, size, targ->g,
+								limit, options, frags);
+					else if(targ->g->proto == IPPROTO_ICMP)
+						m = send_packets(txring, NULL, pkt_icmp, frame, size, targ->g,
+								limit, options, frags);
+				} else {
+					if(type == IPPROTO_UDP)
+						m = send_packets(txring, pkt_udp, NULL, frame, size, targ->g,
+								limit, options, frags);
+					else
+						m = send_packets(txring, NULL, pkt_icmp, frame, size, targ->g,
+								limit, options, frags);
+				}
+
+				ND("limit %d tail %d frags %d m %d",
+						limit, txring->tail, frags, m);
+				sent += m;
+				targ->count = sent;
+				if (rate_limit) {
+					tosend -= m;
+					if (tosend <= 0)
+						break;
 				}
 			}
-
-			ND("limit %d tail %d frags %d m %d",
-				limit, txring->tail, frags, m);
-			sent += m;
-			targ->count = sent;
-			if (rate_limit) {
-				tosend -= m;
-				if (tosend <= 0)
-					break;
-			}
-	}
-}
-	/* flush any remaining packets */
-	ioctl(pfd.fd, NIOCTXSYNC, NULL);
-
-	/* final part: wait all the TX queues to be empty. */
-	for (i = targ->nmd->first_tx_ring; i <= targ->nmd->last_tx_ring; i++) {
-		txring = NETMAP_TXRING(nifp, i);
-		while (nm_tx_pending(txring)) {
-			ioctl(pfd.fd, NIOCTXSYNC, NULL);
-			usleep(1); /* wait 1 tick */
 		}
-	}
-    } /* end DEV_NETMAP */
+		/* flush any remaining packets */
+		ioctl(pfd.fd, NIOCTXSYNC, NULL);
+
+		/* final part: wait all the TX queues to be empty. */
+		for (i = targ->nmd->first_tx_ring; i <= targ->nmd->last_tx_ring; i++) {
+			txring = NETMAP_TXRING(nifp, i);
+			while (nm_tx_pending(txring)) {
+				ioctl(pfd.fd, NIOCTXSYNC, NULL);
+				usleep(1); /* wait 1 tick */
+			}
+		}
+	} /* end DEV_NETMAP */
 
 	clock_gettime(CLOCK_REALTIME_PRECISE, &targ->toc);
 	targ->completed = 1;
 	targ->count = sent;
 
-quit:
+	quit:
 	/* reset the ``used`` flag. */
 	targ->used = 0;
 
 	if(targ->g->proto == R_PCAP)
 	{
-        free(buffer);
- 		pcap_close(head);  //close the pcap file
- 	}
+		free(buffer);
+		pcap_close(head);  //close the pcap file
+	}
 
 	return (NULL);
 }

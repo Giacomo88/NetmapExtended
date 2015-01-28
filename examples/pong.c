@@ -19,13 +19,13 @@ ponger_body(void *data)
 	D("understood ponger %d but don't know how to do it", n);
 	while (n == 0 || sent < n) {
 		uint32_t txcur, txavail;
-//#define BUSYWAIT
+		//#define BUSYWAIT
 #ifdef BUSYWAIT
 		ioctl(pfd.fd, NIOCRXSYNC, NULL);
 #else
 		if (poll(&pfd, 1, 1000) <= 0) {
 			D("poll error/timeout on queue %d: %s", targ->me,
-				strerror(errno));
+					strerror(errno));
 			continue;
 		}
 #endif
@@ -47,7 +47,7 @@ ponger_body(void *data)
 				if (txavail == 0)
 					continue;
 				dst = NETMAP_BUF(txring,
-				    txring->slot[txcur].buf_idx);
+						txring->slot[txcur].buf_idx);
 				/* copy... */
 				dpkt = (uint16_t *)dst;
 				spkt = (uint16_t *)src;

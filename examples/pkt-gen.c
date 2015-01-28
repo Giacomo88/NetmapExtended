@@ -104,8 +104,8 @@ extract_ip_range(struct ip_range *r)
 		strncpy(buf1, inet_ntoa(a), sizeof(buf1));
 		a.s_addr = htonl(r->start);
 		if (1)
-		    D("range is %s:%d to %s:%d",
-			inet_ntoa(a), r->port0, buf1, r->port1);
+			D("range is %s:%d to %s:%d",
+					inet_ntoa(a), r->port0, buf1, r->port1);
 	}
 }
 
@@ -113,7 +113,7 @@ static void
 extract_mac_range(struct mac_range *r)
 {
 	if (verbose)
-	    D("extract MAC range from %s", r->name);
+		D("extract MAC range from %s", r->name);
 	bcopy(ether_aton(r->name), &r->start, 6);
 	bcopy(ether_aton(r->name), &r->end, 6);
 #if 0
@@ -212,8 +212,8 @@ parse_nmr_config(const char* conf, struct nmreq *nmr)
 			nmr->nr_rx_rings, nmr->nr_rx_slots);
 	free(w);
 	return (nmr->nr_tx_rings || nmr->nr_tx_slots ||
-                        nmr->nr_rx_rings || nmr->nr_rx_slots) ?
-		NM_OPEN_RING_CFG : 0;
+			nmr->nr_rx_rings || nmr->nr_rx_slots) ?
+					NM_OPEN_RING_CFG : 0;
 }
 
 
@@ -234,7 +234,7 @@ source_hwaddr(const char *ifname, char *buf)
 
 	for (ifap = ifaphead; ifap; ifap = ifap->ifa_next) {
 		struct sockaddr_dl *sdl =
-			(struct sockaddr_dl *)ifap->ifa_addr;
+				(struct sockaddr_dl *)ifap->ifa_addr;
 		uint8_t *mac;
 
 		if (!sdl || sdl->sdl_family != AF_LINK)
@@ -243,8 +243,8 @@ source_hwaddr(const char *ifname, char *buf)
 			continue;
 		mac = (uint8_t *)LLADDR(sdl);
 		sprintf(buf, "%02x:%02x:%02x:%02x:%02x:%02x",
-			mac[0], mac[1], mac[2],
-			mac[3], mac[4], mac[5]);
+				mac[0], mac[1], mac[2],
+				mac[3], mac[4], mac[5]);
 		if (verbose)
 			D("source hwaddr %s", buf);
 		break;
@@ -258,32 +258,32 @@ usage(void)
 {
 	const char *cmd = "pkt-gen";
 	fprintf(stderr,
-		"Usage:\n"
-		"%s arguments\n"
-		"\t--data param_name=VALUE   	parameters for packet generator: dst_ip src_ip dst-mac src-mac pcap-file\n"
-		"\t--arg mode=VALUE   		available mode are: read gen\n"
-		"\t-i interface			interface name\n"
-		"\t-f function			tx rx ping pong\n"
-		"\t-n count			number of iterations (can be 0)\n"
-		"\t-t pkts_to_send		also forces tx mode\n"
-		"\t-r pkts_to_receive		also forces rx mode\n"
-		"\t-l pkt_size			in bytes excluding CRC\n"
-		/*"\t-d dst_ip[:port[-dst_ip:port]]   single or range\n"
+			"Usage:\n"
+			"%s arguments\n"
+			"\t--data param_name=VALUE   	parameters for packet generator: dst_ip src_ip dst-mac src-mac pcap-file\n"
+			"\t--arg mode=VALUE   		available mode are: read gen\n"
+			"\t-i interface			interface name\n"
+			"\t-f function			tx rx ping pong\n"
+			"\t-n count			number of iterations (can be 0)\n"
+			"\t-t pkts_to_send		also forces tx mode\n"
+			"\t-r pkts_to_receive		also forces rx mode\n"
+			"\t-l pkt_size			in bytes excluding CRC\n"
+			/*"\t-d dst_ip[:port[-dst_ip:port]]   single or range\n"
 		"\t-s src_ip[:port[-src_ip:port]]   single or range\n"
 		"\t-D dst-mac\n"
 		"\t-S src-mac\n" */
-		"\t-a cpu_id			use setaffinity\n"
-		"\t-b burst size		testing, mostly\n"
-		"\t-c cores			cores to use\n"
-		"\t-p threads			processes/threads to use\n"
-		"\t-T report_ms			milliseconds between reports\n"
-		"\t-P				use libpcap instead of netmap\n"
-		"\t-w wait_for_link_time	in seconds\n"
-		"\t-R rate			in packets per second\n"
-		"\t-X				dump payload\n"
-		"\t-H len			add empty virtio-net-header with size 'len'\n"
-		"",
-		cmd);
+			"\t-a cpu_id			use setaffinity\n"
+			"\t-b burst size		testing, mostly\n"
+			"\t-c cores			cores to use\n"
+			"\t-p threads			processes/threads to use\n"
+			"\t-T report_ms			milliseconds between reports\n"
+			"\t-P				use libpcap instead of netmap\n"
+			"\t-w wait_for_link_time	in seconds\n"
+			"\t-R rate			in packets per second\n"
+			"\t-X				dump payload\n"
+			"\t-H len			add empty virtio-net-header with size 'len'\n"
+			"",
+			cmd);
 
 	exit(0);
 }
@@ -294,11 +294,11 @@ struct sf {
 };
 
 static struct sf func[] = {
-	{ "tx",	sender_body },
-	{ "rx",	receiver_body },
-	{ "ping",	pinger_body },
-	{ "pong",	ponger_body },
-	{ NULL, NULL }
+		{ "tx",	sender_body },
+		{ "rx",	receiver_body },
+		{ "ping",	pinger_body },
+		{ "pong",	ponger_body },
+		{ NULL, NULL }
 };
 
 static int
@@ -338,8 +338,8 @@ tap_alloc(char *dev)
 
 	if (*dev) {
 		/* if a device name was specified, put it in the structure; otherwise,
-		* the kernel will try to allocate the "next" device of the
-		* specified type */
+		 * the kernel will try to allocate the "next" device of the
+		 * specified type */
 		strncpy(ifr.ifr_name, dev, IFNAMSIZ);
 	}
 
@@ -351,16 +351,16 @@ tap_alloc(char *dev)
 	}
 
 	/* if the operation was successful, write back the name of the
-	* interface to the variable "dev", so the caller can know
-	* it. Note that the caller MUST reserve space in *dev (see calling
-	* code below) */
+	 * interface to the variable "dev", so the caller can know
+	 * it. Note that the caller MUST reserve space in *dev (see calling
+	 * code below) */
 	strcpy(dev, ifr.ifr_name);
 	D("new name is %s", dev);
 #endif /* linux */
 
-        /* this is the special file descriptor that the caller will use to talk
-         * with the virtual interface */
-        return fd;
+	/* this is the special file descriptor that the caller will use to talk
+	 * with the virtual interface */
+	return fd;
 }
 
 /* struttura di libreria per la getopt_long
@@ -373,24 +373,24 @@ tap_alloc(char *dev)
  * };
  */
 static struct option long_options[] = {
-  {"data", required_argument, 0, 0},
-  {"arg", required_argument, 0, 0},
-  {0, 0, 0, 0 }
+		{"data", required_argument, 0, 0},
+		{"arg", required_argument, 0, 0},
+		{0, 0, 0, 0 }
 };
 
 //parameters of option --data
 const char *data_param[] = {
-    "dst_ip=",
-    "src_ip=",
-    "dst-mac=",
-    "src-mac=",
-    "pcap-file=",
-    "proto="};
+		"dst_ip=",
+		"src_ip=",
+		"dst-mac=",
+		"src-mac=",
+		"pcap-file=",
+		"proto="};
 #define DATA_PARAM_SIZE 6
 
 //parameters of option --arg
 const char *arg_param[] = {
-    "mode="};
+		"mode="};
 #define ARG_PARAM_SIZE 1
 
 int
@@ -446,85 +446,78 @@ main(int arc, char **argv)
 
 			index = optind-1;
 
-			while(index < arc && argv[index][0] != '-')
-			{
+			while(index < arc && argv[index][0] != '-') {
 
-			  //--data case
-			  if(strcmp(long_options[opt_index].name, "data") == 0)
-			  {
-			    incorrect_param=1;
-			    
-			    for(j=0; j<DATA_PARAM_SIZE; j++)
-			    {
-			      if(strstr(argv[index], data_param[j]) != NULL) //check validity of the parameter
-			      {
-				incorrect_param = 0; //parameter argv[index] exists in --data options
-				
-				if(j==0) //dst_ip
-				  g.dst_ip.name = &argv[index][strlen(data_param[j])];
+				//--data case
+				if(strcmp(long_options[opt_index].name, "data") == 0) {
+					incorrect_param=1;
 
-				if(j==1) //src_ip
-				  g.src_ip.name = &argv[index][strlen(data_param[j])];
+					for(j=0; j<DATA_PARAM_SIZE; j++) {
+						if(strstr(argv[index], data_param[j]) != NULL) { //check validity of the parameter
 
-				if(j==2) //dst-mac
-				  g.dst_mac.name = &argv[index][strlen(data_param[j])];
+							incorrect_param = 0; //parameter argv[index] exists in --data options
 
-				if(j==3) //src_mac
-				  g.src_mac.name = &argv[index][strlen(data_param[j])];
+							if(j==0) //dst_ip
+								g.dst_ip.name = &argv[index][strlen(data_param[j])];
 
-				if(j==4) //p-cap file
-				  g.pcap_file = &argv[index][strlen(data_param[j])];
+							if(j==1) //src_ip
+								g.src_ip.name = &argv[index][strlen(data_param[j])];
 
-				if(j==5) //proto
-				{
-				    mode = &argv[index][strlen(data_param[j])];
-				    if (!strcmp(mode, "null"))
-					g.proto = IPPROTO_UDP;
-				    else if (!strncmp(mode, "UDP", 3) || !strncmp(mode, "udp", 3))
-					g.proto = IPPROTO_UDP;
-				    else if (!strncmp(mode, "ICMP", 4) || !strncmp(mode, "icmp", 4))
-					g.proto = IPPROTO_ICMP;
-						    else if (!strncmp(mode, "ALL", 3) || !strncmp(mode, "all", 3))
-					g.proto = ALL_PROTO;
+							if(j==2) //dst-mac
+								g.dst_mac.name = &argv[index][strlen(data_param[j])];
 
+							if(j==3) //src_mac
+								g.src_mac.name = &argv[index][strlen(data_param[j])];
+
+							if(j==4) //p-cap file
+								g.pcap_file = &argv[index][strlen(data_param[j])];
+
+							if(j==5) { //proto
+								mode = &argv[index][strlen(data_param[j])];
+								if (!strcmp(mode, "null"))
+									g.proto = IPPROTO_UDP;
+								else if (!strncmp(mode, "UDP", 3) || !strncmp(mode, "udp", 3))
+									g.proto = IPPROTO_UDP;
+								else if (!strncmp(mode, "ICMP", 4) || !strncmp(mode, "icmp", 4))
+									g.proto = IPPROTO_ICMP;
+								else if (!strncmp(mode, "ALL", 3) || !strncmp(mode, "all", 3))
+									g.proto = ALL_PROTO;
+
+							}
+						}
+					}
+					if(incorrect_param == 1)
+						printf("Invalid parameter in --data option\n");
 				}
-			      }
-			     }
-			     if(incorrect_param == 1)
-				printf("Invalid parameter in --data option\n");
-			   }
 
 
-			  //--arg case
-			  if(strcmp(long_options[opt_index].name, "arg") == 0)
-			  {
-			      incorrect_param=1;
-			      
-			      for(j=0; j<ARG_PARAM_SIZE; j++)
-			      {
-				if(strstr(argv[index], arg_param[j]) != NULL) //check validity of the parameter
-				{
-				  incorrect_param = 0; //parameter argv[index] exists in --arg options
-				  
-				  if(j==0) //mode
-				  {
-				    mode = &argv[index][strlen(arg_param[j])];
+				//--arg case
+				if(strcmp(long_options[opt_index].name, "arg") == 0) {
+					incorrect_param=1;
 
-				    if (!strcmp(mode, "null")) {
-					g.mode = GEN; //packet generation
-				    } else if (!strncmp(mode, "read", 4)) {
-					g.mode = R_PCAP; //read to pcap file
-				    } else if (!strncmp(mode, "gen", 3)) {
-					g.mode = GEN; //packet generation
-				    }
-				  }
+					for(j=0; j<ARG_PARAM_SIZE; j++) {
+						if(strstr(argv[index], arg_param[j]) != NULL) { //check validity of the parameter
+							incorrect_param = 0; //parameter argv[index] exists in --arg options
+
+							if(j==0) { //mode
+
+								mode = &argv[index][strlen(arg_param[j])];
+
+								if (!strcmp(mode, "null")) {
+									g.mode = GEN; //packet generation
+								} else if (!strncmp(mode, "read", 4)) {
+									g.mode = R_PCAP; //read to pcap file
+								} else if (!strncmp(mode, "gen", 3)) {
+									g.mode = GEN; //packet generation
+								}
+							}
+						}
+					}
+					if(incorrect_param == 1)
+						printf("Invalid parameter in --arg option\n");
 				}
-			      }
-			      if(incorrect_param == 1)
-				printf("Invalid parameter in --arg option\n");
-			  }
 
-			  index++;
+				index++;
 			}
 
 			break;
@@ -542,7 +535,7 @@ main(int arc, char **argv)
 			g.frags = i;
 			break;
 
-	/*	case 'M':
+			/*	case 'M':
 			D("mode is %s", optarg);
 
 			if (!strcmp(optarg, "null")) {
@@ -593,7 +586,7 @@ main(int arc, char **argv)
 				g.dev_type = DEV_PCAP;
 				strcpy(g.ifname, optarg + 5);
 			} else if (!strncmp(optarg, "netmap:", 7) ||
-				   !strncmp(optarg, "vale", 4)) {
+					!strncmp(optarg, "vale", 4)) {
 				g.dev_type = DEV_NETMAP;
 			} else if (!strncmp(optarg, "tap", 3)) {
 				g.dev_type = DEV_TAP;
@@ -611,7 +604,7 @@ main(int arc, char **argv)
 			g.pkt_size = atoi(optarg);
 			break;
 
-		/*case 'd':
+			/*case 'd':
 			g.dst_ip.name = optarg;
 			break;
 
@@ -641,7 +634,7 @@ main(int arc, char **argv)
 			g.nthreads = atoi(optarg);
 			break;
 
-		/*case 'D': // destination mac
+			/*case 'D': // destination mac
 			g.dst_mac.name = optarg;
 			break;
 
@@ -711,22 +704,20 @@ main(int arc, char **argv)
 	extract_mac_range(&g.src_mac);
 	extract_mac_range(&g.dst_mac);
 
-	if(g.mode==GEN && g.proto==ALL_PROTO)
-	{
-        D("Please, select only one protocol for gen modality");
-        usage();
+	if(g.mode==GEN && g.proto==ALL_PROTO) {
+		D("Please, select only one protocol for gen modality");
+		usage();
 	}
-	if(g.mode==R_PCAP && g.pcap_file==NULL)
-	{
-        D("Please, input a file for using read modality");
-        usage();
+	if(g.mode==R_PCAP && g.pcap_file==NULL) {
+		D("Please, input a file for using read modality");
+		usage();
 	}
 
 
 	if (g.src_ip.start != g.src_ip.end ||
-	    g.src_ip.port0 != g.src_ip.port1 ||
-	    g.dst_ip.start != g.dst_ip.end ||
-	    g.dst_ip.port0 != g.dst_ip.port1)
+			g.src_ip.port0 != g.src_ip.port1 ||
+			g.dst_ip.start != g.dst_ip.end ||
+			g.dst_ip.port0 != g.dst_ip.port1)
 		g.options |= OPT_COPY;
 
 	if (g.virt_header != 0 && g.virt_header != VIRT_HDR_1
@@ -735,114 +726,114 @@ main(int arc, char **argv)
 		usage();
 	}
 
-    if (g.dev_type == DEV_TAP) {
-	D("want to use tap %s", g.ifname);
-	g.main_fd = tap_alloc(g.ifname);
-	if (g.main_fd < 0) {
-		D("cannot open tap %s", g.ifname);
-		usage();
-	}
+	if (g.dev_type == DEV_TAP) {
+		D("want to use tap %s", g.ifname);
+		g.main_fd = tap_alloc(g.ifname);
+		if (g.main_fd < 0) {
+			D("cannot open tap %s", g.ifname);
+			usage();
+		}
 #ifndef NO_PCAP
-    } else if (g.dev_type == DEV_PCAP) {
-	char pcap_errbuf[PCAP_ERRBUF_SIZE];
+	} else if (g.dev_type == DEV_PCAP) {
+		char pcap_errbuf[PCAP_ERRBUF_SIZE];
 
-	pcap_errbuf[0] = '\0'; // init the buffer
-	g.p = pcap_open_live(g.ifname, 256 /* XXX */, 1, 100, pcap_errbuf);
-	if (g.p == NULL) {
-		D("cannot open pcap on %s", g.ifname);
-		usage();
-	}
-	g.main_fd = pcap_fileno(g.p);
-	D("using pcap on %s fileno %d", g.ifname, g.main_fd);
+		pcap_errbuf[0] = '\0'; // init the buffer
+		g.p = pcap_open_live(g.ifname, 256 /* XXX */, 1, 100, pcap_errbuf);
+		if (g.p == NULL) {
+			D("cannot open pcap on %s", g.ifname);
+			usage();
+		}
+		g.main_fd = pcap_fileno(g.p);
+		D("using pcap on %s fileno %d", g.ifname, g.main_fd);
 #endif /* !NO_PCAP */
-    } else if (g.dummy_send) { /* but DEV_NETMAP */
-	D("using a dummy send routine");
-    } else {
-	struct nmreq base_nmd;
+	} else if (g.dummy_send) { /* but DEV_NETMAP */
+		D("using a dummy send routine");
+	} else {
+		struct nmreq base_nmd;
 
-	bzero(&base_nmd, sizeof(base_nmd));
+		bzero(&base_nmd, sizeof(base_nmd));
 
-	parse_nmr_config(g.nmr_config, &base_nmd);
-	if (g.extra_bufs) {
-		base_nmd.nr_arg3 = g.extra_bufs;
-	}
-
-	/*
-	 * Open the netmap device using nm_open().
-	 *
-	 * protocol stack and may cause a reset of the card,
-	 * which in turn may take some time for the PHY to
-	 * reconfigure. We do the open here to have time to reset.
-	 */
-	g.nmd = nm_open(g.ifname, &base_nmd, 0, NULL);
-	if (g.nmd == NULL) {
-		D("Unable to open %s: %s", g.ifname, strerror(errno));
-		goto out;
-	}
-	g.main_fd = g.nmd->fd;
-	D("mapped %dKB at %p", g.nmd->req.nr_memsize>>10, g.nmd->mem);
-
-	/* get num of queues in tx or rx */
-	if (g.td_body == sender_body)
-		devqueues = g.nmd->req.nr_tx_rings;
-	else
-		devqueues = g.nmd->req.nr_rx_rings;
-
-	/* validate provided nthreads. */
-	if (g.nthreads < 1 || g.nthreads > devqueues) {
-		D("bad nthreads %d, have %d queues", g.nthreads, devqueues);
-		// continue, fail later
-	}
-
-	if (verbose) {
-		struct netmap_if *nifp = g.nmd->nifp;
-		struct nmreq *req = &g.nmd->req;
-
-		D("nifp at offset %d, %d tx %d rx region %d",
-		    req->nr_offset, req->nr_tx_rings, req->nr_rx_rings,
-		    req->nr_arg2);
-		for (i = 0; i <= req->nr_tx_rings; i++) {
-			struct netmap_ring *ring = NETMAP_TXRING(nifp, i);
-			D("   TX%d at 0x%p slots %d", i,
-			    (void *)((char *)ring - (char *)nifp), ring->num_slots);
+		parse_nmr_config(g.nmr_config, &base_nmd);
+		if (g.extra_bufs) {
+			base_nmd.nr_arg3 = g.extra_bufs;
 		}
-		for (i = 0; i <= req->nr_rx_rings; i++) {
-			struct netmap_ring *ring = NETMAP_RXRING(nifp, i);
-			D("   RX%d at 0x%p slots %d", i,
-			    (void *)((char *)ring - (char *)nifp), ring->num_slots);
+
+		/*
+		 * Open the netmap device using nm_open().
+		 *
+		 * protocol stack and may cause a reset of the card,
+		 * which in turn may take some time for the PHY to
+		 * reconfigure. We do the open here to have time to reset.
+		 */
+		g.nmd = nm_open(g.ifname, &base_nmd, 0, NULL);
+		if (g.nmd == NULL) {
+			D("Unable to open %s: %s", g.ifname, strerror(errno));
+			goto out;
+		}
+		g.main_fd = g.nmd->fd;
+		D("mapped %dKB at %p", g.nmd->req.nr_memsize>>10, g.nmd->mem);
+
+		/* get num of queues in tx or rx */
+		if (g.td_body == sender_body)
+			devqueues = g.nmd->req.nr_tx_rings;
+		else
+			devqueues = g.nmd->req.nr_rx_rings;
+
+		/* validate provided nthreads. */
+		if (g.nthreads < 1 || g.nthreads > devqueues) {
+			D("bad nthreads %d, have %d queues", g.nthreads, devqueues);
+			// continue, fail later
+		}
+
+		if (verbose) {
+			struct netmap_if *nifp = g.nmd->nifp;
+			struct nmreq *req = &g.nmd->req;
+
+			D("nifp at offset %d, %d tx %d rx region %d",
+					req->nr_offset, req->nr_tx_rings, req->nr_rx_rings,
+					req->nr_arg2);
+			for (i = 0; i <= req->nr_tx_rings; i++) {
+				struct netmap_ring *ring = NETMAP_TXRING(nifp, i);
+				D("   TX%d at 0x%p slots %d", i,
+						(void *)((char *)ring - (char *)nifp), ring->num_slots);
+			}
+			for (i = 0; i <= req->nr_rx_rings; i++) {
+				struct netmap_ring *ring = NETMAP_RXRING(nifp, i);
+				D("   RX%d at 0x%p slots %d", i,
+						(void *)((char *)ring - (char *)nifp), ring->num_slots);
+			}
+		}
+
+		/* Print some debug information. */
+		fprintf(stdout,
+				"%s %s: %d queues, %d threads and %d cpus.\n",
+				(g.td_body == sender_body) ? "Sending on" : "Receiving from",
+						g.ifname,
+						devqueues,
+						g.nthreads,
+						g.cpus);
+		if (g.td_body == sender_body) {
+			fprintf(stdout, "%s -> %s (%s -> %s)\n",
+					g.src_ip.name, g.dst_ip.name,
+					g.src_mac.name, g.dst_mac.name);
+		}
+
+		out:
+		/* Exit if something went wrong. */
+		if (g.main_fd < 0) {
+			D("aborting");
+			usage();
 		}
 	}
-
-	/* Print some debug information. */
-	fprintf(stdout,
-		"%s %s: %d queues, %d threads and %d cpus.\n",
-		(g.td_body == sender_body) ? "Sending on" : "Receiving from",
-		g.ifname,
-		devqueues,
-		g.nthreads,
-		g.cpus);
-	if (g.td_body == sender_body) {
-		fprintf(stdout, "%s -> %s (%s -> %s)\n",
-			g.src_ip.name, g.dst_ip.name,
-			g.src_mac.name, g.dst_mac.name);
-	}
-
-out:
-	/* Exit if something went wrong. */
-	if (g.main_fd < 0) {
-		D("aborting");
-		usage();
-	}
-    }
 
 
 	if (g.options) {
 		D("--- SPECIAL OPTIONS:%s%s%s%s%s\n",
-			g.options & OPT_PREFETCH ? " prefetch" : "",
-			g.options & OPT_ACCESS ? " access" : "",
-			g.options & OPT_MEMCPY ? " memcpy" : "",
-			g.options & OPT_INDIRECT ? " indirect" : "",
-			g.options & OPT_COPY ? " copy" : "");
+				g.options & OPT_PREFETCH ? " prefetch" : "",
+						g.options & OPT_ACCESS ? " access" : "",
+								g.options & OPT_MEMCPY ? " memcpy" : "",
+										g.options & OPT_INDIRECT ? " indirect" : "",
+												g.options & OPT_COPY ? " copy" : "");
 	}
 
 	g.tx_period.tv_sec = g.tx_period.tv_nsec = 0;
@@ -850,7 +841,7 @@ out:
 		/* try to have at least something every second,
 		 * reducing the burst size to some 0.01s worth of data
 		 * (but no less than one full set of fragments)
-	 	 */
+		 */
 		uint64_t x;
 		int lim = (g.tx_rate)/300;
 		if (g.burst > lim)
@@ -863,8 +854,8 @@ out:
 		g.tx_period.tv_nsec = g.tx_period.tv_nsec % 1000000000;
 	}
 	if (g.td_body == sender_body)
-	    D("Sending %d packets every  %ld.%09ld s",
-			g.burst, g.tx_period.tv_sec, g.tx_period.tv_nsec);
+		D("Sending %d packets every  %ld.%09ld s",
+				g.burst, g.tx_period.tv_sec, g.tx_period.tv_nsec);
 	/* Wait for PHY reset. */
 	D("Wait %d secs for phy reset", wait_link);
 	sleep(wait_link);
