@@ -182,10 +182,8 @@ struct targ {
 	pthread_t thread;
 	int affinity;
 
-
 	struct pkt_udp pkt_udp;
 	struct pkt_icmp pkt_icmp;
-
 };
 
 #ifdef __linux__

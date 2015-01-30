@@ -5,6 +5,11 @@ int virt_header;
 uint8_t protocol;
 char *filename=NULL;
 
+struct protocol {
+	void *pkt_ptr;
+	void *f_update;
+};
+
 static __inline struct timespec
 timespec_add(struct timespec a, struct timespec b)
 {
@@ -206,7 +211,7 @@ static void pcap_reader(u_char **buffer,int *len, int *type)
 		head = pcap_open_offline(filename, errbuf);   //call pcap library function
 
 		if (head == NULL) {
-			fprintf(stderr,"Couldn't open pcap file %s: %s\n",filename , errbuf);
+			D("Couldn't open pcap file %s: %s\n",filename , errbuf);
 			/*return(2);*/
 		}
 	}
@@ -219,7 +224,7 @@ static void pcap_reader(u_char **buffer,int *len, int *type)
 			head = pcap_open_offline(filename, errbuf);   //call pcap library function
 
 			if (head == NULL) {
-				fprintf(stderr,"Couldn't open pcap file %s: %s\n",filename , errbuf);
+				D("Couldn't open pcap file %s: %s\n",filename , errbuf);
 				/*return(2);*/
 			}
 			continue;
@@ -239,7 +244,10 @@ static void pcap_reader(u_char **buffer,int *len, int *type)
 		struct ip *ip_hdr = (struct ip *)&pkt_ptr[ether_offset]; //point to an IP header structure
 
 		if(ip_hdr->ip_p == IPPROTO_UDP || ip_hdr->ip_p == IPPROTO_ICMP) {
-			if(protocol == ALL_PROTO || ip_hdr->ip_p==protocol) {
+			// N.B. questo if va migliorato
+			if(protocol == ALL_PROTO || (ip_hdr->ip_p==IPPROTO_UDP && protocol==0)
+					|| (ip_hdr->ip_p==IPPROTO_ICMP && protocol==1)) {
+
 				*type = ip_hdr->ip_p;
 				*len = header.len;
 				if(*buffer!=NULL) free(*buffer);
@@ -254,15 +262,10 @@ static void pcap_reader(u_char **buffer,int *len, int *type)
 	}
 }
 
-/*
- * create and enqueue a batch of packets on a ring.
- * On the last one set NS_REPORT to tell the driver to generate
- * an interrupt when done.
- */
 static int
-send_packets(struct netmap_ring *ring, struct pkt_udp *pkt_udp, struct pkt_icmp *pkt_icmp, void *frame,
+send_packets(struct netmap_ring *ring, void *frame,
 		int size, struct glob_arg *g, u_int count, int options,
-		u_int nfrags)
+		u_int nfrags, struct protocol pkt_map[])
 {
 
 	u_int n, sent, cur = ring->cur;
@@ -300,14 +303,14 @@ send_packets(struct netmap_ring *ring, struct pkt_udp *pkt_udp, struct pkt_icmp 
 			nm_pkt_copy(frame, p, size);
 			if (fcnt == nfrags) {
 				if(g->mode==GEN) {
-					if(g->proto==PKT_ICMP)
-						update_addresses_icmp(pkt_icmp, g);
-					else
-						update_addresses_udp(pkt_udp, g);
+					void (*ptrf) ( void *pkt, struct glob_arg *g);
+					ptrf = pkt_map[protocol].f_update;
+					ptrf(pkt_map[protocol].pkt_ptr, g);
+
 				} else {
 					pcap_reader(&buffer,&size, &type);
 					frame = buffer;
-					frame += sizeof(pkt_icmp->vh) - virt_header;
+					frame += sizeof(struct virt_header) - virt_header;
 					size += virt_header;
 				}
 			}
@@ -315,14 +318,14 @@ send_packets(struct netmap_ring *ring, struct pkt_udp *pkt_udp, struct pkt_icmp 
 			memcpy(p, frame, size);
 			if (fcnt == nfrags) {
 				if(g->mode==GEN) {
-					if(g->proto==PKT_ICMP)
-						update_addresses_icmp(pkt_icmp, g);
-					else
-						update_addresses_udp(pkt_udp, g);
+					void (*ptrf) ( void *pkt, struct glob_arg *g);
+					ptrf = pkt_map[protocol].f_update;
+					ptrf(pkt_map[protocol].pkt_ptr, g);
+
 				} else {
 					pcap_reader(&buffer,&size, &type);
 					frame = buffer;
-					frame += sizeof(pkt_icmp->vh) - virt_header;
+					frame += sizeof(struct virt_header) - virt_header;
 					size += virt_header;
 				}
 			}
@@ -364,18 +367,18 @@ sender_body(void *data)
 	int size=0,type=0;
 	u_char *buffer=NULL;
 
-	struct pkt_udp *pkt_udp = &targ->pkt_udp;
-	struct pkt_icmp *pkt_icmp = &targ->pkt_icmp;
+	struct protocol pkt_map[] = {
+			{ &targ->pkt_udp, update_addresses_udp },
+			{ &targ->pkt_icmp, update_addresses_icmp },
+			{ NULL, NULL}
+	};
+
 	virt_header = targ->g->virt_header;
 
-	protocol= targ->g->proto;
+	protocol = targ->g->proto;
 
 	if(targ->g->mode==GEN) {
-		if(targ->g->proto == PKT_UDP) {
-			frame = pkt_udp;
-		} else if(targ->g->proto == PKT_ICMP) {
-			frame = pkt_icmp;
-		}
+		frame = pkt_map[protocol].pkt_ptr;
 		frame += sizeof(struct virt_header) - targ->g->virt_header;
 		size = targ->g->pkt_size + targ->g->virt_header;
 	} else {
@@ -384,12 +387,12 @@ sender_body(void *data)
 		head = pcap_open_offline(filename, errbuf);   //call pcap library function
 
 		if (head == NULL) {
-			fprintf(stderr,"Couldn't open pcap file %s: %s\n",filename , errbuf);
+			D("Couldn't open pcap file %s: %s\n",filename , errbuf);
 			/*return(2);*/
 		}
 		pcap_reader(&buffer,&size, &type);
 		frame = buffer;
-		frame += sizeof(pkt_icmp->vh) - targ->g->virt_header;
+		frame += sizeof(struct virt_header) - targ->g->virt_header;
 		size += targ->g->virt_header;
 	}
 
@@ -412,14 +415,14 @@ sender_body(void *data)
 			if (write(targ->g->main_fd, frame, size) != -1)
 				sent++;
 			if(targ->g->mode==GEN) {
-				if(targ->g->proto == PKT_UDP)
-					update_addresses_udp(pkt_udp, targ->g);
-				else
-					update_addresses_icmp(pkt_icmp, targ->g);
+				void (*ptrf) ( void *pkt, struct glob_arg *g);
+				ptrf = pkt_map[protocol].f_update;
+				ptrf(pkt_map[protocol].pkt_ptr, targ->g);
+
 			} else {
 				pcap_reader(&buffer,&size, &type);
 				frame = buffer;
-				frame += sizeof(pkt_icmp->vh) - targ->g->virt_header;
+				frame += sizeof(struct virt_header) - targ->g->virt_header;
 				size += targ->g->virt_header;
 			}
 
@@ -436,14 +439,13 @@ sender_body(void *data)
 			if (pcap_inject(p, frame, size) != -1)
 				sent++;
 			if(targ->g->mode==GEN) {
-				if(targ->g->proto == PKT_UDP)
-					update_addresses_udp(pkt_udp, targ->g);
-				else
-					update_addresses_icmp(pkt_icmp, targ->g);
+				void (*ptrf) ( void *pkt, struct glob_arg *g);
+				ptrf = pkt_map[protocol].f_update;
+				ptrf(pkt_map[protocol].pkt_ptr, targ->g);
 			} else {
 				pcap_reader(&buffer,&size, &type);
 				frame = buffer;
-				frame += sizeof(pkt_icmp->vh) - targ->g->virt_header;
+				frame += sizeof(struct virt_header) - targ->g->virt_header;
 				size += targ->g->virt_header;
 			}
 
@@ -496,21 +498,8 @@ sender_body(void *data)
 				if (frags > 1)
 					limit = ((limit + frags - 1) / frags) * frags;
 
-				if(targ->g->mode == GEN) {
-					if(targ->g->proto == PKT_UDP)
-						m = send_packets(txring, pkt_udp, NULL, frame, size, targ->g,
-								limit, options, frags);
-					else if(targ->g->proto == PKT_ICMP)
-						m = send_packets(txring, NULL, pkt_icmp, frame, size, targ->g,
-								limit, options, frags);
-				} else {
-					if(type == PKT_UDP)
-						m = send_packets(txring, pkt_udp, NULL, frame, size, targ->g,
-								limit, options, frags);
-					else
-						m = send_packets(txring, NULL, pkt_icmp, frame, size, targ->g,
-								limit, options, frags);
-				}
+				m = send_packets(txring,frame, size, targ->g,
+						limit, options, frags, pkt_map);
 
 				ND("limit %d tail %d frags %d m %d",
 						limit, txring->tail, frags, m);
