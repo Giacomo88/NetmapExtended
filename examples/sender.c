@@ -300,7 +300,7 @@ send_packets(struct netmap_ring *ring, struct pkt_udp *pkt_udp, struct pkt_icmp 
 			nm_pkt_copy(frame, p, size);
 			if (fcnt == nfrags) {
 				if(g->mode==GEN) {
-					if(g->proto==IPPROTO_ICMP)
+					if(g->proto==PKT_ICMP)
 						update_addresses_icmp(pkt_icmp, g);
 					else
 						update_addresses_udp(pkt_udp, g);
@@ -315,7 +315,7 @@ send_packets(struct netmap_ring *ring, struct pkt_udp *pkt_udp, struct pkt_icmp 
 			memcpy(p, frame, size);
 			if (fcnt == nfrags) {
 				if(g->mode==GEN) {
-					if(g->proto==IPPROTO_ICMP)
+					if(g->proto==PKT_ICMP)
 						update_addresses_icmp(pkt_icmp, g);
 					else
 						update_addresses_udp(pkt_udp, g);
@@ -371,15 +371,13 @@ sender_body(void *data)
 	protocol= targ->g->proto;
 
 	if(targ->g->mode==GEN) {
-		if(targ->g->proto == IPPROTO_UDP) {
+		if(targ->g->proto == PKT_UDP) {
 			frame = pkt_udp;
-			frame += sizeof(pkt_udp->vh) - targ->g->virt_header;
-			size = targ->g->pkt_size + targ->g->virt_header;
-		} else if(targ->g->proto == IPPROTO_ICMP) {
+		} else if(targ->g->proto == PKT_ICMP) {
 			frame = pkt_icmp;
-			frame += sizeof(pkt_icmp->vh) - targ->g->virt_header;
-			size = targ->g->pkt_size + targ->g->virt_header;
 		}
+		frame += sizeof(struct virt_header) - targ->g->virt_header;
+		size = targ->g->pkt_size + targ->g->virt_header;
 	} else {
 		filename = targ->g->pcap_file;
 		char errbuf[PCAP_ERRBUF_SIZE]; //not sure what to do with this, oh well
@@ -414,7 +412,7 @@ sender_body(void *data)
 			if (write(targ->g->main_fd, frame, size) != -1)
 				sent++;
 			if(targ->g->mode==GEN) {
-				if(targ->g->proto == IPPROTO_UDP)
+				if(targ->g->proto == PKT_UDP)
 					update_addresses_udp(pkt_udp, targ->g);
 				else
 					update_addresses_icmp(pkt_icmp, targ->g);
@@ -438,7 +436,7 @@ sender_body(void *data)
 			if (pcap_inject(p, frame, size) != -1)
 				sent++;
 			if(targ->g->mode==GEN) {
-				if(targ->g->proto == IPPROTO_UDP)
+				if(targ->g->proto == PKT_UDP)
 					update_addresses_udp(pkt_udp, targ->g);
 				else
 					update_addresses_icmp(pkt_icmp, targ->g);
@@ -499,14 +497,14 @@ sender_body(void *data)
 					limit = ((limit + frags - 1) / frags) * frags;
 
 				if(targ->g->mode == GEN) {
-					if(targ->g->proto == IPPROTO_UDP)
+					if(targ->g->proto == PKT_UDP)
 						m = send_packets(txring, pkt_udp, NULL, frame, size, targ->g,
 								limit, options, frags);
-					else if(targ->g->proto == IPPROTO_ICMP)
+					else if(targ->g->proto == PKT_ICMP)
 						m = send_packets(txring, NULL, pkt_icmp, frame, size, targ->g,
 								limit, options, frags);
 				} else {
-					if(type == IPPROTO_UDP)
+					if(type == PKT_UDP)
 						m = send_packets(txring, pkt_udp, NULL, frame, size, targ->g,
 								limit, options, frags);
 					else

@@ -53,7 +53,7 @@ wrapsum(u_int32_t sum)
  * initialize one packet and prepare for the next one.
  * The copy could be done better instead of repeating it each time.
  */
-void
+void *
 initialize_packet_icmp(struct targ *targ)
 {
 	const char*default_payload="netmap pkt-gen DIRECT payload\n"
@@ -113,4 +113,5 @@ initialize_packet_icmp(struct targ *targ)
 
 	bzero(&pkt->vh, sizeof(pkt->vh));
 	// dump_payload((void *)pkt, targ->g->pkt_size, NULL, 0);
+	return (NULL);
 }

@@ -212,6 +212,8 @@ struct targ {
 
 #define R_PCAP 3
 
-#define ALL_PROTO 18
+#define PKT_UDP 0
+#define PKT_ICMP 1
+#define ALL_PROTO 255
 
 #define GEN 2 

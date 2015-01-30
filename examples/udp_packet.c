@@ -100,4 +100,5 @@ initialize_packet_udp(struct targ *targ)
 
 	bzero(&pkt->vh, sizeof(pkt->vh));
 	// dump_payload((void *)pkt, targ->g->pkt_size, NULL, 0);
+
 }

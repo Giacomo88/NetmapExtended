@@ -18,7 +18,7 @@ pinger_body(void *data)
 	struct timespec ts, now, last_print;
 	uint32_t count = 0, min = 1000000000, av = 0;
 
-	if(targ->g->proto == IPPROTO_UDP){
+	if(targ->g->proto == PKT_UDP){
 		frame = &targ->pkt_udp;
 		frame += sizeof(targ->pkt_udp.vh) - targ->g->virt_header;
 	}

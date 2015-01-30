@@ -3,10 +3,23 @@
 #include "icmp_packet.h"
 #include "receiver.h"
 
+struct protocol {
+	char *key;
+	void *f_init;
+};
+
+static struct protocol pkt_map[] = {
+		{ "udp" , initialize_packet_udp },
+		{ "icmp", initialize_packet_icmp },
+		{ NULL, NULL}
+};
+
 void
 start_threads(struct glob_arg *g, struct targ *targs)
 {
 	int i;
+
+
 
 	/*
 	 * Now create the desired number of threads, each one
@@ -66,11 +79,11 @@ start_threads(struct glob_arg *g, struct targ *targs)
 		}
 
 		if(g->mode != R_PCAP){
-			/* default, init packets */
-			if(g->proto == IPPROTO_UDP)
-				initialize_packet_udp(t);
-			else if(g->proto == IPPROTO_ICMP)
-				initialize_packet_icmp(t);
+
+			void (*ptrf) ( struct targ *targs);
+			ptrf = pkt_map[g->proto].f_init;
+			ptrf(t);
+
 		}
 
 		if (pthread_create(&t->thread, NULL, g->td_body, t) == -1) {

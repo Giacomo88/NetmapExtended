@@ -44,6 +44,8 @@
 #include "receiver.h"
 #include "ping.h"
 #include "pong.h"
+#include "udp_packet.h"
+#include "icmp_packet.h"
 
 int verbose = 0;
 /*
@@ -301,6 +303,9 @@ static struct sf func[] = {
 		{ NULL, NULL }
 };
 
+
+
+
 static int
 tap_alloc(char *dev)
 {
@@ -430,7 +435,7 @@ main(int arc, char **argv)
 	g.nmr_config = "";
 	g.virt_header = 0;
 	g.mode = GEN;
-	g.proto = IPPROTO_UDP;
+	g.proto = PKT_UDP;
 
 	while ( (ch = getopt_long(arc, argv,
 			"a:f:F:n:i:Il:b:c:o:p:T:w:WvR:XC:H:e:m:", long_options, &opt_index)) != -1) {
@@ -475,11 +480,11 @@ main(int arc, char **argv)
 							if(j==5) { //proto
 								mode = &argv[index][strlen(data_param[j])];
 								if (!strcmp(mode, "null"))
-									g.proto = IPPROTO_UDP;
+									g.proto = PKT_UDP;
 								else if (!strncmp(mode, "UDP", 3) || !strncmp(mode, "udp", 3))
-									g.proto = IPPROTO_UDP;
+									g.proto = PKT_UDP;
 								else if (!strncmp(mode, "ICMP", 4) || !strncmp(mode, "icmp", 4))
-									g.proto = IPPROTO_ICMP;
+									g.proto = PKT_ICMP;
 								else if (!strncmp(mode, "ALL", 3) || !strncmp(mode, "all", 3))
 									g.proto = ALL_PROTO;
 
