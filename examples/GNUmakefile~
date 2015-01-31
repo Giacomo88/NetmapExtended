@@ -1,6 +1,6 @@
 # For multiple programs using a single source file each,
 # we can just define 'progs' and create custom targets.
-PROGS	=bridge vale-ctl
+PROGS	=	pkt-gen bridge vale-ctl
 #PROGS += pingd
 PROGS	+= test_select testmmap
 X86PROG = testlock testcsum
@@ -47,6 +47,7 @@ vale-ctl: vale-ctl.o
 
 clean:
 	-@rm -rf $(CLEANFILES)
+	pkt-gen: $(MAKE) -C pkt-gen/make clean
 
 testlock: testlock.c
 

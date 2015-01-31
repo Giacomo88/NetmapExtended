@@ -205,6 +205,8 @@ static void pcap_reader(u_char **buffer,int *len, int *type)
 	u_char *pad = (u_char*)malloc(size_vh);
 	memset(pad,0, size_vh);
 
+	int supported_proto[] = {IPPROTO_UDP, IPPROTO_ICMP};
+
 	if(head==NULL) {
 		pcap_close(head);
 		char errbuf[PCAP_ERRBUF_SIZE];
@@ -244,16 +246,17 @@ static void pcap_reader(u_char **buffer,int *len, int *type)
 		struct ip *ip_hdr = (struct ip *)&pkt_ptr[ether_offset]; //point to an IP header structure
 
 		if(ip_hdr->ip_p == IPPROTO_UDP || ip_hdr->ip_p == IPPROTO_ICMP) {
-			// N.B. questo if va migliorato
-			if(protocol == ALL_PROTO || (ip_hdr->ip_p==IPPROTO_UDP && protocol==0)
-					|| (ip_hdr->ip_p==IPPROTO_ICMP && protocol==1)) {
+			if(protocol == ALL_PROTO || ip_hdr->ip_p == supported_proto[protocol]) {
 
 				*type = ip_hdr->ip_p;
 				*len = header.len;
+				//*len = ntohs(ip_hdr->ip_len)+ ether_offset;
+
 				if(*buffer!=NULL) free(*buffer);
-				*buffer = (u_char*)malloc(header.len + size_vh);
+				*buffer = (u_char*)malloc(*len + size_vh);
 				memcpy(*buffer,pad,size_vh);
-				memcpy(*buffer + size_vh, pkt_ptr, header.len);
+				memcpy(*buffer + size_vh, pkt_ptr, *len);
+				D("pkt_len: %i",*len);
 				break;
 			} else
 				continue;
@@ -301,6 +304,7 @@ send_packets(struct netmap_ring *ring, void *frame,
 			slot->ptr = (uint64_t)((uintptr_t)frame);
 		} else if (options & OPT_COPY) {
 			nm_pkt_copy(frame, p, size);
+			D("after nm_cpy: %i",size);
 			if (fcnt == nfrags) {
 				if(g->mode==GEN) {
 					void (*ptrf) ( void *pkt, struct glob_arg *g);
@@ -443,7 +447,7 @@ sender_body(void *data)
 				ptrf = pkt_map[protocol].f_update;
 				ptrf(pkt_map[protocol].pkt_ptr, targ->g);
 			} else {
-				pcap_reader(&buffer,&size, &type);
+				pcap_reader(&buffer, &size, &type);
 				frame = buffer;
 				frame += sizeof(struct virt_header) - targ->g->virt_header;
 				size += targ->g->virt_header;
