@@ -1,5 +1,10 @@
 #include "everything.h"
 
+struct protocol {
+	char *key;
+	void *pkt_ptr;
+};
+
 /*
  * Send a packet, and wait for a response.
  * The payload (after UDP header, ofs 42) has a 4-byte sequence
@@ -18,17 +23,15 @@ pinger_body(void *data)
 	struct timespec ts, now, last_print;
 	uint32_t count = 0, min = 1000000000, av = 0;
 
-	if(targ->g->proto == PKT_UDP){
-		frame = &targ->pkt_udp;
-		frame += sizeof(targ->pkt_udp.vh) - targ->g->virt_header;
-	}
-	else{
-		frame = &targ->pkt_icmp;
-		frame += sizeof(targ->pkt_icmp.vh) - targ->g->virt_header;
-	}
+	struct protocol pkt_map[] = {
+			{ "udp", &targ->pkt_udp },
+			{ "icmp", &targ->pkt_icmp },
+			{ NULL, NULL}
+	};
 
+	frame = pkt_map[targ->g->proto].pkt_ptr;
+	frame += sizeof(struct virt_header) - targ->g->virt_header;
 	size = targ->g->pkt_size + targ->g->virt_header;
-
 
 	if (targ->g->nthreads > 1) {
 		D("can only ping with 1 thread");

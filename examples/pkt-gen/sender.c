@@ -6,6 +6,7 @@ uint8_t protocol;
 char *filename=NULL;
 
 struct protocol {
+	char *key;
 	void *pkt_ptr;
 	void *f_update;
 };
@@ -372,9 +373,9 @@ sender_body(void *data)
 	u_char *buffer=NULL;
 
 	struct protocol pkt_map[] = {
-			{ &targ->pkt_udp, update_addresses_udp },
-			{ &targ->pkt_icmp, update_addresses_icmp },
-			{ NULL, NULL}
+			{ "udp", &targ->pkt_udp, update_addresses_udp },
+			{ "icmp", &targ->pkt_icmp, update_addresses_icmp },
+			{ NULL, NULL, NULL}
 	};
 
 	virt_header = targ->g->virt_header;
