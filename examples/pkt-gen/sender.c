@@ -2,13 +2,15 @@
 
 pcap_t *head=NULL, *next=NULL;
 int virt_header;
-uint8_t protocol;
+uint8_t proto_idx, read_proto;
 char *filename=NULL;
+char *proto;
 
 struct protocol {
 	char *key;
 	void *pkt_ptr;
 	void *f_update;
+	uint8_t protocol;
 };
 
 static __inline struct timespec
@@ -206,8 +208,6 @@ static void pcap_reader(u_char **buffer,int *len, int *type)
 	u_char *pad = (u_char*)malloc(size_vh);
 	memset(pad,0, size_vh);
 
-	int supported_proto[] = {IPPROTO_UDP, IPPROTO_ICMP};
-
 	if(head==NULL) {
 		pcap_close(head);
 		char errbuf[PCAP_ERRBUF_SIZE];
@@ -247,7 +247,7 @@ static void pcap_reader(u_char **buffer,int *len, int *type)
 		struct ip *ip_hdr = (struct ip *)&pkt_ptr[ether_offset]; //point to an IP header structure
 
 		if(ip_hdr->ip_p == IPPROTO_UDP || ip_hdr->ip_p == IPPROTO_ICMP) {
-			if(protocol == ALL_PROTO || ip_hdr->ip_p == supported_proto[protocol]) {
+			if(strcmp(proto,"all")==0 || ip_hdr->ip_p == read_proto) {
 
 				*type = ip_hdr->ip_p;
 				*len = header.len;
@@ -309,8 +309,8 @@ send_packets(struct netmap_ring *ring, void *frame,
 			if (fcnt == nfrags) {
 				if(g->mode==GEN) {
 					void (*ptrf) ( void *pkt, struct glob_arg *g);
-					ptrf = pkt_map[protocol].f_update;
-					ptrf(pkt_map[protocol].pkt_ptr, g);
+					ptrf = pkt_map[proto_idx].f_update;
+					ptrf(pkt_map[proto_idx].pkt_ptr, g);
 
 				} else {
 					pcap_reader(&buffer,&size, &type);
@@ -324,8 +324,8 @@ send_packets(struct netmap_ring *ring, void *frame,
 			if (fcnt == nfrags) {
 				if(g->mode==GEN) {
 					void (*ptrf) ( void *pkt, struct glob_arg *g);
-					ptrf = pkt_map[protocol].f_update;
-					ptrf(pkt_map[protocol].pkt_ptr, g);
+					ptrf = pkt_map[proto_idx].f_update;
+					ptrf(pkt_map[proto_idx].pkt_ptr, g);
 
 				} else {
 					pcap_reader(&buffer,&size, &type);
@@ -373,20 +373,38 @@ sender_body(void *data)
 	u_char *buffer=NULL;
 
 	struct protocol pkt_map[] = {
-			{ "udp", &targ->pkt_udp, update_addresses_udp },
-			{ "icmp", &targ->pkt_icmp, update_addresses_icmp },
-			{ NULL, NULL, NULL}
+			{ "udp", &targ->pkt_udp, update_addresses_udp, IPPROTO_UDP },
+			{ "icmp", &targ->pkt_icmp, update_addresses_icmp, IPPROTO_ICMP },
+			{ "all", NULL, NULL, 0 },
+			{ NULL, NULL, NULL, 0 }
 	};
 
 	virt_header = targ->g->virt_header;
 
-	protocol = targ->g->proto;
+	proto = targ->g->proto;
+
+	proto_idx = 0;
+	while( pkt_map[proto_idx].key != NULL ) {
+		if( strcmp(pkt_map[proto_idx].key, targ->g->proto) == 0 ) {
+			read_proto = pkt_map[proto_idx].protocol;
+			break;
+		}
+		proto_idx++;
+	}
 
 	if(targ->g->mode==GEN) {
-		frame = pkt_map[protocol].pkt_ptr;
+
+		/*proto_idx = 0;
+			while( pkt_map[proto_idx].key != NULL ) {
+				if( strcmp(pkt_map[proto_idx].key, targ->g->proto) == 0 ) break;
+				proto_idx++;
+			}*/
+
+		frame = pkt_map[proto_idx].pkt_ptr;
 		frame += sizeof(struct virt_header) - targ->g->virt_header;
 		size = targ->g->pkt_size + targ->g->virt_header;
-	} else {
+	} else { // mode read
+
 		filename = targ->g->pcap_file;
 		char errbuf[PCAP_ERRBUF_SIZE]; //not sure what to do with this, oh well
 		head = pcap_open_offline(filename, errbuf);   //call pcap library function
@@ -421,8 +439,8 @@ sender_body(void *data)
 				sent++;
 			if(targ->g->mode==GEN) {
 				void (*ptrf) ( void *pkt, struct glob_arg *g);
-				ptrf = pkt_map[protocol].f_update;
-				ptrf(pkt_map[protocol].pkt_ptr, targ->g);
+				ptrf = pkt_map[proto_idx].f_update;
+				ptrf(pkt_map[proto_idx].pkt_ptr, targ->g);
 
 			} else {
 				pcap_reader(&buffer,&size, &type);
@@ -445,8 +463,8 @@ sender_body(void *data)
 				sent++;
 			if(targ->g->mode==GEN) {
 				void (*ptrf) ( void *pkt, struct glob_arg *g);
-				ptrf = pkt_map[protocol].f_update;
-				ptrf(pkt_map[protocol].pkt_ptr, targ->g);
+				ptrf = pkt_map[proto_idx].f_update;
+				ptrf(pkt_map[proto_idx].pkt_ptr, targ->g);
 			} else {
 				pcap_reader(&buffer, &size, &type);
 				frame = buffer;
@@ -538,7 +556,7 @@ sender_body(void *data)
 	/* reset the ``used`` flag. */
 	targ->used = 0;
 
-	if(targ->g->proto == R_PCAP)
+	if(targ->g->mode == R_PCAP)
 	{
 		free(buffer);
 		pcap_close(head);  //close the pcap file

@@ -303,9 +303,6 @@ static struct sf func[] = {
 		{ NULL, NULL }
 };
 
-
-
-
 static int
 tap_alloc(char *dev)
 {
@@ -383,15 +380,10 @@ static struct option long_options[] = {
 		{0, 0, 0, 0 }
 };
 
-//parameters of option --data
-const char *data_param[] = {
-		"dst_ip=",
-		"src_ip=",
-		"dst-mac=",
-		"src-mac=",
-		"pcap-file=",
-		"proto="};
-#define DATA_PARAM_SIZE 6
+struct long_opt_parameter {
+	char *name;		//parameter name
+	void *value_loc;	//where to store the value
+};
 
 //parameters of option --arg
 const char *arg_param[] = {
@@ -413,6 +405,7 @@ main(int arc, char **argv)
 	int incorrect_param=1;	/* long option parameter validity: 1=not correct, 0=correct */
 
 	char *mode; 	/* parameters of long options --arg*/
+	//char *param;
 
 	bzero(&g, sizeof(g));
 
@@ -435,7 +428,25 @@ main(int arc, char **argv)
 	g.nmr_config = "";
 	g.virt_header = 0;
 	g.mode = GEN;
-	g.proto = PKT_UDP;
+	g.proto = "udp";
+
+	//parameters of option --data
+	struct long_opt_parameter data_param[] = {
+			{ "dst_ip", &g.dst_ip.name },
+			{ "src_ip", &g.src_ip.name },
+			{ "dst-mac", &g.dst_mac.name },
+			{ "src-mac", &g.src_mac.name },
+			{ "pcap-file", &g.pcap_file },
+			{ "proto", &g.proto },
+			{ NULL, NULL } 
+	};
+
+	/*
+	//parameters of option --arg
+	struct long_opt_parameter arg_param[] = {
+		{ "mode" , &g.mode },
+		{ NULL, NULL} 
+	};*/
 
 	while ( (ch = getopt_long(arc, argv,
 			"a:f:F:n:i:Il:b:c:o:p:T:w:WvR:XC:H:e:m:", long_options, &opt_index)) != -1) {
@@ -455,46 +466,22 @@ main(int arc, char **argv)
 
 				//--data case
 				if(strcmp(long_options[opt_index].name, "data") == 0) {
+
 					incorrect_param=1;
 
-					for(j=0; j<DATA_PARAM_SIZE; j++) {
-						if(strstr(argv[index], data_param[j]) != NULL) { //check validity of the parameter
-
-							incorrect_param = 0; //parameter argv[index] exists in --data options
-
-							if(j==0) //dst_ip
-								g.dst_ip.name = &argv[index][strlen(data_param[j])];
-
-							if(j==1) //src_ip
-								g.src_ip.name = &argv[index][strlen(data_param[j])];
-
-							if(j==2) //dst-mac
-								g.dst_mac.name = &argv[index][strlen(data_param[j])];
-
-							if(j==3) //src_mac
-								g.src_mac.name = &argv[index][strlen(data_param[j])];
-
-							if(j==4) //p-cap file
-								g.pcap_file = &argv[index][strlen(data_param[j])];
-
-							if(j==5) { //proto
-								mode = &argv[index][strlen(data_param[j])];
-								if (!strcmp(mode, "null"))
-									g.proto = PKT_UDP;
-								else if (!strncmp(mode, "UDP", 3) || !strncmp(mode, "udp", 3))
-									g.proto = PKT_UDP;
-								else if (!strncmp(mode, "ICMP", 4) || !strncmp(mode, "icmp", 4))
-									g.proto = PKT_ICMP;
-								else if (!strncmp(mode, "ALL", 3) || !strncmp(mode, "all", 3))
-									g.proto = ALL_PROTO;
-
-							}
+					for(i=0; data_param[i].name != NULL; i++) 
+					{
+						//compare parameter name in data_param with parameter specified in argv
+						if(strncmp(data_param[i].name, argv[index], strlen(data_param[i].name)) == 0){
+							*((uintptr_t*)(data_param[i].value_loc)) = (uintptr_t) &(argv[index][strlen(data_param[i].name)+1]);
+							incorrect_param=0;
+							break;
 						}
-					}
+					}	
+
 					if(incorrect_param == 1)
 						printf("Invalid parameter in --data option\n");
 				}
-
 
 				//--arg case
 				if(strcmp(long_options[opt_index].name, "arg") == 0) {
@@ -676,6 +663,14 @@ main(int arc, char **argv)
 		}
 	}
 
+	printf("g.src_ip: %s\n", g.src_ip.name);
+	printf("g.dst_ip: %s\n", g.dst_ip.name);
+	printf("g.src-mac: %s\n", g.src_mac.name);
+	printf("g.dst-mac: %s\n", g.dst_mac.name);
+	printf("g.pcap_file: %s\n", g.pcap_file);
+
+
+
 	if (g.ifname == NULL) {
 		D("missing ifname");
 		usage();
@@ -709,7 +704,7 @@ main(int arc, char **argv)
 	extract_mac_range(&g.src_mac);
 	extract_mac_range(&g.dst_mac);
 
-	if(g.mode==GEN && g.proto==ALL_PROTO) {
+	if(g.mode==GEN && strcmp(g.proto, "all")==0){
 		D("Please, select only one protocol for gen modality");
 		usage();
 	}

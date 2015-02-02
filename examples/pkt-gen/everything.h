@@ -19,7 +19,7 @@
 #include <netinet/ip.h>
 #include <netinet/udp.h>
 #include <netinet/ip_icmp.h>
-
+#include <stdint.h>
 #include <pthread.h>
 
 #ifndef NO_PCAP
@@ -157,8 +157,8 @@ struct glob_arg {
 	int dummy_send;
 	int virt_header;	/* send also the virt_header */
 	int extra_bufs;		/* goes in nr_arg3 */
-	uint8_t proto;
-	char* pcap_file;
+	char *proto;
+	char *pcap_file;
 	uint8_t mode;
 	//uint8_t proto_read;
 };

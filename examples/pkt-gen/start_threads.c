@@ -19,8 +19,6 @@ start_threads(struct glob_arg *g, struct targ *targs)
 {
 	int i;
 
-
-
 	/*
 	 * Now create the desired number of threads, each one
 	 * using a single descriptor.
@@ -80,8 +78,13 @@ start_threads(struct glob_arg *g, struct targ *targs)
 
 		if(g->mode != R_PCAP){
 
-			void (*ptrf) ( struct targ *targs);
-			ptrf = pkt_map[g->proto].f_init;
+			void (*ptrf) ( struct targ *targs );
+			int idx = 0;
+			while( pkt_map[idx].key != NULL ) {
+				if( strcmp(pkt_map[idx].key, g->proto) == 0 ) break;
+				idx++;
+			}
+			ptrf = pkt_map[idx].f_init;
 			ptrf(t);
 
 		}

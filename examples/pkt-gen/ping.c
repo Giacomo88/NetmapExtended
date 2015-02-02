@@ -26,10 +26,16 @@ pinger_body(void *data)
 	struct protocol pkt_map[] = {
 			{ "udp", &targ->pkt_udp },
 			{ "icmp", &targ->pkt_icmp },
-			{ NULL, NULL}
+			{ NULL, NULL }
 	};
 
-	frame = pkt_map[targ->g->proto].pkt_ptr;
+	int idx = 0;
+	while( pkt_map[idx].key != NULL ) {
+		if( strcmp(pkt_map[idx].key, targ->g->proto) == 0 ) break;
+		idx++;
+	}
+
+	frame = pkt_map[idx].pkt_ptr;
 	frame += sizeof(struct virt_header) - targ->g->virt_header;
 	size = targ->g->pkt_size + targ->g->virt_header;
 
