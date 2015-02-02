@@ -385,15 +385,17 @@ struct long_opt_parameter {
 	void *value_loc;	//where to store the value
 };
 
+/*
 //parameters of option --arg
 const char *arg_param[] = {
 		"mode="};
 #define ARG_PARAM_SIZE 1
+*/
 
 int
 main(int arc, char **argv)
 {
-	int i=0, j=0;
+	int i=0;
 
 	struct glob_arg g;
 
@@ -404,7 +406,7 @@ main(int arc, char **argv)
 	int index=0;
 	int incorrect_param=1;	/* long option parameter validity: 1=not correct, 0=correct */
 
-	char *mode; 	/* parameters of long options --arg*/
+	//char *mode; 	/* parameters of long options --arg*/
 	//char *param;
 
 	bzero(&g, sizeof(g));
@@ -441,12 +443,12 @@ main(int arc, char **argv)
 			{ NULL, NULL } 
 	};
 
-	/*
+	
 	//parameters of option --arg
 	struct long_opt_parameter arg_param[] = {
 		{ "mode" , &g.mode },
 		{ NULL, NULL} 
-	};*/
+	};
 
 	while ( (ch = getopt_long(arc, argv,
 			"a:f:F:n:i:Il:b:c:o:p:T:w:WvR:XC:H:e:m:", long_options, &opt_index)) != -1) {
@@ -487,6 +489,17 @@ main(int arc, char **argv)
 				if(strcmp(long_options[opt_index].name, "arg") == 0) {
 					incorrect_param=1;
 
+					for(i=0; arg_param[i].name != NULL; i++) 
+					{
+						//compare parameter name in data_param with parameter specified in argv
+						if(strncmp(arg_param[i].name, argv[index], strlen(arg_param[i].name)) == 0){
+							*((uintptr_t*)(arg_param[i].value_loc)) = (uintptr_t) &(argv[index][strlen(arg_param[i].name)+1]);
+							incorrect_param=0;
+							break;
+						}
+					}
+					
+					/*
 					for(j=0; j<ARG_PARAM_SIZE; j++) {
 						if(strstr(argv[index], arg_param[j]) != NULL) { //check validity of the parameter
 							incorrect_param = 0; //parameter argv[index] exists in --arg options
@@ -504,7 +517,7 @@ main(int arc, char **argv)
 								}
 							}
 						}
-					}
+					}*/
 					if(incorrect_param == 1)
 						printf("Invalid parameter in --arg option\n");
 				}
@@ -704,11 +717,11 @@ main(int arc, char **argv)
 	extract_mac_range(&g.src_mac);
 	extract_mac_range(&g.dst_mac);
 
-	if(g.mode==GEN && strcmp(g.proto, "all")==0){
+	if(strcmp(g.mode,GEN)==0 && strcmp(g.proto, "all")==0){
 		D("Please, select only one protocol for gen modality");
 		usage();
 	}
-	if(g.mode==R_PCAP && g.pcap_file==NULL) {
+	if(strcmp(g.mode,R_PCAP)==0 && g.pcap_file==NULL) {
 		D("Please, input a file for using read modality");
 		usage();
 	}

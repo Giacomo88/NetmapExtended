@@ -76,7 +76,7 @@ start_threads(struct glob_arg *g, struct targ *targs)
 			t->affinity = -1;
 		}
 
-		if(g->mode != R_PCAP){
+		if(strcmp(g->mode,R_PCAP) != 0){
 
 			void (*ptrf) ( struct targ *targs );
 			int idx = 0;

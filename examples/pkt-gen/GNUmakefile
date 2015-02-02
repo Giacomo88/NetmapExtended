@@ -23,3 +23,6 @@ endif
 pkt-gen: pkt-gen.o sender.o main_thread.o receiver.o udp_packet.o start_threads.o ping.o pong.o icmp_packet.o
 %-pic.o: %.c
 	$(CC) $(CFLAGS) -fpic -c $^ -o $@
+
+clean:
+	@rm *.o $(PROGS)

@@ -307,7 +307,7 @@ send_packets(struct netmap_ring *ring, void *frame,
 			nm_pkt_copy(frame, p, size);
 			D("after nm_cpy: %i",size);
 			if (fcnt == nfrags) {
-				if(g->mode==GEN) {
+				if(strcmp(g->mode,GEN)==0) {
 					void (*ptrf) ( void *pkt, struct glob_arg *g);
 					ptrf = pkt_map[proto_idx].f_update;
 					ptrf(pkt_map[proto_idx].pkt_ptr, g);
@@ -322,7 +322,7 @@ send_packets(struct netmap_ring *ring, void *frame,
 		} else if (options & OPT_MEMCPY) {
 			memcpy(p, frame, size);
 			if (fcnt == nfrags) {
-				if(g->mode==GEN) {
+				if(strcmp(g->mode,GEN)==0) {
 					void (*ptrf) ( void *pkt, struct glob_arg *g);
 					ptrf = pkt_map[proto_idx].f_update;
 					ptrf(pkt_map[proto_idx].pkt_ptr, g);
@@ -392,7 +392,7 @@ sender_body(void *data)
 		proto_idx++;
 	}
 
-	if(targ->g->mode==GEN) {
+	if(strcmp(targ->g->mode,GEN)==0) {
 
 		/*proto_idx = 0;
 			while( pkt_map[proto_idx].key != NULL ) {
@@ -437,7 +437,7 @@ sender_body(void *data)
 		for (i = 0; !targ->cancel && (n == 0 || sent < n); i++) {
 			if (write(targ->g->main_fd, frame, size) != -1)
 				sent++;
-			if(targ->g->mode==GEN) {
+			if(strcmp(targ->g->mode,GEN)==0) {
 				void (*ptrf) ( void *pkt, struct glob_arg *g);
 				ptrf = pkt_map[proto_idx].f_update;
 				ptrf(pkt_map[proto_idx].pkt_ptr, targ->g);
@@ -461,7 +461,7 @@ sender_body(void *data)
 		for (i = 0; !targ->cancel && (n == 0 || sent < n); i++) {
 			if (pcap_inject(p, frame, size) != -1)
 				sent++;
-			if(targ->g->mode==GEN) {
+			if(strcmp(targ->g->mode,GEN)==0) {
 				void (*ptrf) ( void *pkt, struct glob_arg *g);
 				ptrf = pkt_map[proto_idx].f_update;
 				ptrf(pkt_map[proto_idx].pkt_ptr, targ->g);
@@ -556,7 +556,7 @@ sender_body(void *data)
 	/* reset the ``used`` flag. */
 	targ->used = 0;
 
-	if(targ->g->mode == R_PCAP)
+	if(strcmp(targ->g->mode,R_PCAP)==0)
 	{
 		free(buffer);
 		pcap_close(head);  //close the pcap file

@@ -159,7 +159,7 @@ struct glob_arg {
 	int extra_bufs;		/* goes in nr_arg3 */
 	char *proto;
 	char *pcap_file;
-	uint8_t mode;
+	char *mode;
 	//uint8_t proto_read;
 };
 
@@ -208,10 +208,12 @@ struct targ {
 
 #define	PAY_OFS	42	/* where in the pkt... */
 
-#define R_PCAP 3
+#define R_PCAP "read" //read packets from a pcap file
+#define GEN "gen"	//generate packets
 
+/*
 #define PKT_UDP 0
 #define PKT_ICMP 1
 #define ALL_PROTO 255
+*/
 
-#define GEN 2 
