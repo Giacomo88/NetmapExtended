@@ -1,16 +1,16 @@
 #include "everything.h"
 
-pcap_t *head=NULL, *next=NULL;
+pcap_t *head=NULL;
 int virt_header;
-uint8_t proto_idx, read_proto;
+uint8_t proto_idx, desired_proto;
 char *filename=NULL;
-char *proto;
+char *protocol_name;
 
 struct protocol {
 	char *key;
 	void *pkt_ptr;
 	void *f_update;
-	uint8_t protocol;
+	short int protocol;
 };
 
 static __inline struct timespec
@@ -177,10 +177,7 @@ static void
 update_addresses_icmp(struct pkt_icmp *pkt, struct glob_arg *g)
 {
 	uint32_t a;
-	//uint16_t p;
 	struct ip *ip = &pkt->ip;
-	//struct udphdr *udp = &pkt->udp;
-	//struct icmphdr *icmp = &pkt->icmp;
 
 	do {
 		a = ntohl(ip->ip_src.s_addr);
@@ -200,13 +197,15 @@ update_addresses_icmp(struct pkt_icmp *pkt, struct glob_arg *g)
 	// update checksum
 }
 
-static void pcap_reader(u_char **buffer,int *len, int *type)
+static void
+pcap_reader(u_char **buffer, int *len, struct protocol pkt_map[])
 {
 	struct pcap_pkthdr header; // The header that pcap gives us
 	const u_char *packet; // The actual packet
 	int size_vh = sizeof(struct virt_header);
 	u_char *pad = (u_char*)malloc(size_vh);
 	memset(pad,0, size_vh);
+	int i=0;
 
 	if(head==NULL) {
 		pcap_close(head);
@@ -215,7 +214,7 @@ static void pcap_reader(u_char **buffer,int *len, int *type)
 
 		if (head == NULL) {
 			D("Couldn't open pcap file %s: %s\n",filename , errbuf);
-			/*return(2);*/
+			exit(EXIT_FAILURE);
 		}
 	}
 
@@ -228,7 +227,7 @@ static void pcap_reader(u_char **buffer,int *len, int *type)
 
 			if (head == NULL) {
 				D("Couldn't open pcap file %s: %s\n",filename , errbuf);
-				/*return(2);*/
+				exit(EXIT_FAILURE);
 			}
 			continue;
 		}
@@ -246,23 +245,22 @@ static void pcap_reader(u_char **buffer,int *len, int *type)
 
 		struct ip *ip_hdr = (struct ip *)&pkt_ptr[ether_offset]; //point to an IP header structure
 
-		if(ip_hdr->ip_p == IPPROTO_UDP || ip_hdr->ip_p == IPPROTO_ICMP) {
-			if(strcmp(proto,"all")==0 || ip_hdr->ip_p == read_proto) {
+		i=0;
+		while((ip_hdr->ip_p != pkt_map[i].protocol) && (pkt_map[i].key !=NULL)) i++;
 
-				*type = ip_hdr->ip_p;
+		if(pkt_map[i].key == NULL) continue;
+		else {
+			if(strcmp(protocol_name,"all")==0 || ip_hdr->ip_p == desired_proto) {
+
 				*len = header.len;
-				//*len = ntohs(ip_hdr->ip_len)+ ether_offset;
-
 				if(*buffer!=NULL) free(*buffer);
 				*buffer = (u_char*)malloc(*len + size_vh);
 				memcpy(*buffer,pad,size_vh);
 				memcpy(*buffer + size_vh, pkt_ptr, *len);
-				D("pkt_len: %i",*len);
 				break;
 			} else
 				continue;
-		}else
-			continue;
+		}
 	}
 }
 
@@ -274,7 +272,6 @@ send_packets(struct netmap_ring *ring, void *frame,
 
 	u_int n, sent, cur = ring->cur;
 	u_int fcnt;
-	int type;
 	u_char *buffer=NULL;
 
 	n = nm_ring_space(ring);
@@ -300,12 +297,14 @@ send_packets(struct netmap_ring *ring, void *frame,
 		struct netmap_slot *slot = &ring->slot[cur];
 		char *p = NETMAP_BUF(ring, slot->buf_idx);
 		slot->flags = 0;
+		slot->len = size;
 		if (options & OPT_INDIRECT) {
 			slot->flags |= NS_INDIRECT;
 			slot->ptr = (uint64_t)((uintptr_t)frame);
 		} else if (options & OPT_COPY) {
+
 			nm_pkt_copy(frame, p, size);
-			D("after nm_cpy: %i",size);
+
 			if (fcnt == nfrags) {
 				if(strcmp(g->mode,GEN)==0) {
 					void (*ptrf) ( void *pkt, struct glob_arg *g);
@@ -313,13 +312,14 @@ send_packets(struct netmap_ring *ring, void *frame,
 					ptrf(pkt_map[proto_idx].pkt_ptr, g);
 
 				} else {
-					pcap_reader(&buffer,&size, &type);
+					pcap_reader(&buffer, &size, pkt_map);
 					frame = buffer;
 					frame += sizeof(struct virt_header) - virt_header;
 					size += virt_header;
 				}
 			}
 		} else if (options & OPT_MEMCPY) {
+
 			memcpy(p, frame, size);
 			if (fcnt == nfrags) {
 				if(strcmp(g->mode,GEN)==0) {
@@ -328,7 +328,7 @@ send_packets(struct netmap_ring *ring, void *frame,
 					ptrf(pkt_map[proto_idx].pkt_ptr, g);
 
 				} else {
-					pcap_reader(&buffer,&size, &type);
+					pcap_reader(&buffer, &size, pkt_map);
 					frame = buffer;
 					frame += sizeof(struct virt_header) - virt_header;
 					size += virt_header;
@@ -339,7 +339,8 @@ send_packets(struct netmap_ring *ring, void *frame,
 		}
 		if (options & OPT_DUMP)
 			dump_payload(p, size, ring, cur);
-		slot->len = size;
+
+		//slot->len = size;
 		if (--fcnt > 0)
 			slot->flags |= NS_MOREFRAG;
 		else
@@ -369,36 +370,30 @@ sender_body(void *data)
 	int rate_limit = targ->g->tx_rate;
 
 	void *frame=NULL;
-	int size=0,type=0;
+	int size=0;
 	u_char *buffer=NULL;
 
 	struct protocol pkt_map[] = {
 			{ "udp", &targ->pkt_udp, update_addresses_udp, IPPROTO_UDP },
 			{ "icmp", &targ->pkt_icmp, update_addresses_icmp, IPPROTO_ICMP },
-			{ "all", NULL, NULL, 0 },
-			{ NULL, NULL, NULL, 0 }
+			{ "all", NULL, NULL, -1 },
+			{ NULL, NULL, NULL, -1 }
 	};
 
 	virt_header = targ->g->virt_header;
 
-	proto = targ->g->proto;
+	protocol_name = targ->g->proto;
 
 	proto_idx = 0;
 	while( pkt_map[proto_idx].key != NULL ) {
 		if( strcmp(pkt_map[proto_idx].key, targ->g->proto) == 0 ) {
-			read_proto = pkt_map[proto_idx].protocol;
+			desired_proto = pkt_map[proto_idx].protocol;
 			break;
 		}
 		proto_idx++;
 	}
 
 	if(strcmp(targ->g->mode,GEN)==0) {
-
-		/*proto_idx = 0;
-			while( pkt_map[proto_idx].key != NULL ) {
-				if( strcmp(pkt_map[proto_idx].key, targ->g->proto) == 0 ) break;
-				proto_idx++;
-			}*/
 
 		frame = pkt_map[proto_idx].pkt_ptr;
 		frame += sizeof(struct virt_header) - targ->g->virt_header;
@@ -411,9 +406,9 @@ sender_body(void *data)
 
 		if (head == NULL) {
 			D("Couldn't open pcap file %s: %s\n",filename , errbuf);
-			/*return(2);*/
+			goto quit;
 		}
-		pcap_reader(&buffer,&size, &type);
+		pcap_reader(&buffer,&size, pkt_map);
 		frame = buffer;
 		frame += sizeof(struct virt_header) - targ->g->virt_header;
 		size += targ->g->virt_header;
@@ -443,7 +438,7 @@ sender_body(void *data)
 				ptrf(pkt_map[proto_idx].pkt_ptr, targ->g);
 
 			} else {
-				pcap_reader(&buffer,&size, &type);
+				pcap_reader(&buffer,&size, pkt_map);
 				frame = buffer;
 				frame += sizeof(struct virt_header) - targ->g->virt_header;
 				size += targ->g->virt_header;
@@ -466,7 +461,7 @@ sender_body(void *data)
 				ptrf = pkt_map[proto_idx].f_update;
 				ptrf(pkt_map[proto_idx].pkt_ptr, targ->g);
 			} else {
-				pcap_reader(&buffer, &size, &type);
+				pcap_reader(&buffer, &size, pkt_map);
 				frame = buffer;
 				frame += sizeof(struct virt_header) - targ->g->virt_header;
 				size += targ->g->virt_header;
@@ -520,6 +515,7 @@ sender_body(void *data)
 					continue;
 				if (frags > 1)
 					limit = ((limit + frags - 1) / frags) * frags;
+
 
 				m = send_packets(txring,frame, size, targ->g,
 						limit, options, frags, pkt_map);
