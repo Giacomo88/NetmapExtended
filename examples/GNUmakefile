@@ -42,11 +42,15 @@ bridge: bridge.o
 
 vale-ctl: vale-ctl.o
 
+pkt-gen: ./pkt-gen/pkt-gen.o
+	$(MAKE) -C ./pkt-gen/
+
 %-pic.o: %.c
 	$(CC) $(CFLAGS) -fpic -c $^ -o $@
 
 clean:
 	-@rm -rf $(CLEANFILES)
+	$(MAKE) -C ./pkt-gen/ clean
 
 testlock: testlock.c
 

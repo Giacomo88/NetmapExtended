@@ -1,5 +1,3 @@
-INCS = everything.h icmp_packet.h main_thread.h ping.h pkt-gen.c pong.h receiver.h sender.h start_threads.h udp_packet.h
-SRCS = icmp_packet.c main_thread.c ping.c pong.c receiver.c sender.c start_threads.c udp_packet.c
 PROGS = pkt-gen
 
 SRCDIR ?= ../..
