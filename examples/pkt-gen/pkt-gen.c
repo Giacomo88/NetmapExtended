@@ -367,13 +367,13 @@ tap_alloc(char *dev)
 	return fd;
 }
 
-/* struttura di libreria per la getopt_long
+/* library structure used by getopt_long
  *
  * struct option {
- * 	const char *name; //nome dell'opzione
- * 	int has_arg;	//vale 1 (o required_argument) se l'opzione richiede dei parametri, 0 (no_argument) altrimenti
- * 	int *flag;	//valore restituito dalla getopt_long quando si specifica quell'opzione
- * 	int val;	//nome alternativo con una singola lettera (ad esempio --help, -h)
+ * 	const char *name; //option name
+ * 	int has_arg;	//1 (equivalent to required_argument) if the option require some parameters, 0 (no_argument) otherwise
+ * 	int *flag;	//value returned by the getopt_long 
+ * 	int val;	//alternative name for the option (i.e. --help, -h)
  * };
  */
 static struct option long_options[] = {
@@ -387,12 +387,6 @@ struct long_opt_parameter {
 	void *value_loc;	//where to store the value
 };
 
-/*
-//parameters of option --arg
-const char *arg_param[] = {
-		"mode="};
-#define ARG_PARAM_SIZE 1
- */
 
 int
 main(int arc, char **argv)
@@ -407,9 +401,6 @@ main(int arc, char **argv)
 	int opt_index=0;	/* index of long options (getopt_long) */
 	int index=0;
 	int incorrect_param=1;	/* long option parameter validity: 1=not correct, 0=correct */
-
-	//char *mode; 	/* parameters of long options --arg*/
-	//char *param;
 
 	bzero(&g, sizeof(g));
 
@@ -484,46 +475,26 @@ main(int arc, char **argv)
 							break;
 						}
 					}	
-
-					if(incorrect_param == 1)
-						printf("Invalid parameter in --data option\n");
 				}
-
 				//--arg case
-				if(strcmp(long_options[opt_index].name, "arg") == 0) {
+				else if(strcmp(long_options[opt_index].name, "arg") == 0) {
 					incorrect_param=1;
 
 					for(i=0; arg_param[i].name != NULL; i++) 
 					{
-						//compare parameter name in data_param with parameter specified in argv
+						//compare parameter name in arg_param with parameter specified in argv
 						if(strncmp(arg_param[i].name, argv[index], strlen(arg_param[i].name)) == 0){
 							*((uintptr_t*)(arg_param[i].value_loc)) = (uintptr_t) &(argv[index][strlen(arg_param[i].name)+1]);
 							incorrect_param=0;
 							break;
 						}
 					}
-
-					/*
-					for(j=0; j<ARG_PARAM_SIZE; j++) {
-						if(strstr(argv[index], arg_param[j]) != NULL) { //check validity of the parameter
-							incorrect_param = 0; //parameter argv[index] exists in --arg options
-
-							if(j==0) { //mode
-
-								mode = &argv[index][strlen(arg_param[j])];
-
-								if (!strcmp(mode, "null")) {
-									g.mode = GEN; //packet generation
-								} else if (!strncmp(mode, "read", 4)) {
-									g.mode = R_PCAP; //read to pcap file
-								} else if (!strncmp(mode, "gen", 3)) {
-									g.mode = GEN; //packet generation
-								}
-							}
-						}
-					}*/
-					if(incorrect_param == 1)
-						printf("Invalid parameter in --arg option\n");
+				}
+				
+				if(incorrect_param == 1)
+				{
+					D("Invalid parameter in --%s option\n", long_options[opt_index].name);
+					break;
 				}
 
 				index++;
@@ -543,18 +514,6 @@ main(int arc, char **argv)
 			}
 			g.frags = i;
 			break;
-
-			/*	case 'M':
-			D("mode is %s", optarg);
-
-			if (!strcmp(optarg, "null")) {
-				g.mode = GEN; //packet generation
-			} else if (!strncmp(optarg, "read", 4)) {
-				g.mode = R_PCAP; //read to pcap file
-			} else if (!strncmp(optarg, "gen", 3)) {
-				g.mode = GEN; //packet generation
-			}
-			break;*/
 
 		case 'f':
 			for (fn = func; fn->key; fn++) {
@@ -680,12 +639,12 @@ main(int arc, char **argv)
 		}
 	}
 
+	/*
 	printf("g.src_ip: %s\n", g.src_ip.name);
 	printf("g.dst_ip: %s\n", g.dst_ip.name);
 	printf("g.src-mac: %s\n", g.src_mac.name);
 	printf("g.dst-mac: %s\n", g.dst_mac.name);
-	printf("g.pcap_file: %s\n", g.pcap_file);
-
+	*/
 
 
 	if (g.ifname == NULL) {
@@ -725,10 +684,11 @@ main(int arc, char **argv)
 		D("Please, select only one protocol for gen modality");
 		usage();
 	}
-	if(strcmp(g.mode,R_PCAP)==0 && g.pcap_file==NULL) {
+	else if(strcmp(g.mode,R_PCAP)==0 && g.pcap_file==NULL) {
 		D("Please, input a file for using read modality");
 		usage();
 	}
+	
 	if(strcmp(g.blocking,"no")!=0 && strcmp(g.blocking,"yes")!=0) {
 		D("Invalid blocking argument, insert yes or no");
 		usage();
