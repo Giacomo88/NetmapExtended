@@ -157,10 +157,11 @@ struct glob_arg {
 	int dummy_send;
 	int virt_header;	/* send also the virt_header */
 	int extra_bufs;		/* goes in nr_arg3 */
+
 	char *proto;
 	char *pcap_file;
 	char *mode;
-	//uint8_t proto_read;
+	char *blocking;
 };
 
 enum dev_type { DEV_NONE, DEV_NETMAP, DEV_PCAP, DEV_TAP };

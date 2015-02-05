@@ -431,6 +431,7 @@ main(int arc, char **argv)
 	g.virt_header = 0;
 	g.mode = GEN;
 	g.proto = "udp";
+	g.blocking = "yes";
 
 	//parameters of option --data
 	struct long_opt_parameter data_param[] = {
@@ -447,6 +448,7 @@ main(int arc, char **argv)
 	//parameters of option --arg
 	struct long_opt_parameter arg_param[] = {
 		{ "mode" , &g.mode },
+		{ "blocking" , &g.blocking },
 		{ NULL, NULL} 
 	};
 
@@ -725,6 +727,11 @@ main(int arc, char **argv)
 		D("Please, input a file for using read modality");
 		usage();
 	}
+	if(strcmp(g.blocking,"no")!=0 && strcmp(g.blocking,"yes")!=0) {
+		D("Invalid blocking argument, insert yes or no");
+		usage();
+	}
+
 
 
 	if (g.src_ip.start != g.src_ip.end ||
