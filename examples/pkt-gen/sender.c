@@ -372,7 +372,6 @@ sender_body(void *data)
 	void *frame=NULL;
 	int size=0;
 	u_char *buffer=NULL;
-	int timeout;
 
 	struct protocol pkt_map[] = {
 			{ "udp", &targ->pkt_udp, update_addresses_udp, IPPROTO_UDP },
@@ -489,12 +488,7 @@ sender_body(void *data)
 			/*
 			 * wait for available room in the send queue(s)
 			 */
-			if( strcmp(targ->g->blocking, "no") == 0 )
-				timeout=0;
-			else
-				timeout=2000;
-
-			if (poll(&pfd, 1, timeout) <= 0) {
+			if (poll(&pfd, 1, 2000) <= 0) {
 				if (targ->cancel)
 					break;
 				D("poll error/timeout on queue %d: %s", targ->me,

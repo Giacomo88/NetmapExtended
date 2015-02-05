@@ -262,8 +262,10 @@ usage(void)
 	fprintf(stderr,
 			"Usage:\n"
 			"%s arguments\n"
-			"\t--data param_name=VALUE   	parameters for packet generator: dst_ip src_ip dst-mac src-mac pcap-file\n"
-			"\t--arg mode=VALUE   		available mode are: read gen\n"
+			"\t--data param_name=VALUE   	parameters for packet generator:\n"
+			"\t\tdst_ip src_ip dst-mac src-mac pcap-file proto (udp/icmp/all)\n"
+			"\t--arg param_name=VALUE   	functions arguments:\n"
+			"\t\tmode (read/gen) blocking (yes/no)\n"
 			"\t-i interface			interface name\n"
 			"\t-f function			tx rx ping pong\n"
 			"\t-n count			number of iterations (can be 0)\n"
@@ -390,7 +392,7 @@ struct long_opt_parameter {
 const char *arg_param[] = {
 		"mode="};
 #define ARG_PARAM_SIZE 1
-*/
+ */
 
 int
 main(int arc, char **argv)
@@ -444,12 +446,12 @@ main(int arc, char **argv)
 			{ NULL, NULL } 
 	};
 
-	
+
 	//parameters of option --arg
 	struct long_opt_parameter arg_param[] = {
-		{ "mode" , &g.mode },
-		{ "blocking" , &g.blocking },
-		{ NULL, NULL} 
+			{ "mode" , &g.mode },
+			{ "blocking" , &g.blocking },
+			{ NULL, NULL}
 	};
 
 	while ( (ch = getopt_long(arc, argv,
@@ -500,7 +502,7 @@ main(int arc, char **argv)
 							break;
 						}
 					}
-					
+
 					/*
 					for(j=0; j<ARG_PARAM_SIZE; j++) {
 						if(strstr(argv[index], arg_param[j]) != NULL) { //check validity of the parameter
