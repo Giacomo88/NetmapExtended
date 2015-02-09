@@ -266,6 +266,7 @@ usage(void)
 			"\t\tdst_ip src_ip dst-mac src-mac pcap-file proto (udp/icmp/all)\n"
 			"\t--arg param_name=VALUE   	functions arguments:\n"
 			"\t\tmode (read/gen) blocking (yes/no)\n"
+			"\t-g pkts_generator		(can be udp icmp pcap)\n"
 			"\t-i interface			interface name\n"
 			"\t-f function			tx rx ping pong\n"
 			"\t-n count			number of iterations (can be 0)\n"
@@ -378,7 +379,7 @@ tap_alloc(char *dev)
  */
 static struct option long_options[] = {
 		{"data", required_argument, 0, 0},
-		{"arg", required_argument, 0, 0},
+		//{"arg", required_argument, 0, 0},
 		{0, 0, 0, 0 }
 };
 
@@ -422,9 +423,9 @@ main(int arc, char **argv)
 	g.frags = 1;
 	g.nmr_config = "";
 	g.virt_header = 0;
-	g.mode = GEN;
-	g.proto = "udp";
-	g.blocking = "yes";
+	g.mode = "udp";
+/*	g.proto = "udp";
+	g.blocking = "yes";*/
 
 	//parameters of option --data
 	struct long_opt_parameter data_param[] = {
@@ -433,20 +434,19 @@ main(int arc, char **argv)
 			{ "dst-mac", &g.dst_mac.name },
 			{ "src-mac", &g.src_mac.name },
 			{ "pcap-file", &g.pcap_file },
-			{ "proto", &g.proto },
 			{ NULL, NULL } 
 	};
 
 
 	//parameters of option --arg
-	struct long_opt_parameter arg_param[] = {
+	/*	struct long_opt_parameter arg_param[] = {
 			{ "mode" , &g.mode },
 			{ "blocking" , &g.blocking },
 			{ NULL, NULL}
-	};
+	};*/
 
 	while ( (ch = getopt_long(arc, argv,
-			"a:f:F:n:i:Il:b:c:o:p:T:w:WvR:XC:H:e:m:", long_options, &opt_index)) != -1) {
+			"a:f:F:n:i:Il:b:c:o:p:T:w:WvR:XC:H:e:m:g:", long_options, &opt_index)) != -1) {
 		struct sf *fn;
 
 		switch(ch) {
@@ -477,20 +477,20 @@ main(int arc, char **argv)
 					}	
 				}
 				//--arg case
-				else if(strcmp(long_options[opt_index].name, "arg") == 0) {
+				/*else if(strcmp(long_options[opt_index].name, "arg") == 0) {
 					incorrect_param=1;
 
 					for(i=0; arg_param[i].name != NULL; i++) 
 					{
 						//compare parameter name in arg_param with parameter specified in argv
 						if(strncmp(arg_param[i].name, argv[index], strlen(arg_param[i].name)) == 0){
-							*((uintptr_t*)(arg_param[i].value_loc)) = (uintptr_t) &(argv[index][strlen(arg_param[i].name)+1]);
+				 *((uintptr_t*)(arg_param[i].value_loc)) = (uintptr_t) &(argv[index][strlen(arg_param[i].name)+1]);
 							incorrect_param=0;
 							break;
 						}
 					}
-				}
-				
+				}*/
+
 				if(incorrect_param == 1)
 				{
 					D("Invalid parameter in --%s option\n", long_options[opt_index].name);
@@ -500,6 +500,11 @@ main(int arc, char **argv)
 				index++;
 			}
 
+			break;
+
+		case 'g':
+			g.mode = optarg;
+			printf("mode: %s",optarg);
 			break;
 
 		case 'n':
@@ -644,7 +649,7 @@ main(int arc, char **argv)
 	printf("g.dst_ip: %s\n", g.dst_ip.name);
 	printf("g.src-mac: %s\n", g.src_mac.name);
 	printf("g.dst-mac: %s\n", g.dst_mac.name);
-	*/
+	 */
 
 
 	if (g.ifname == NULL) {
@@ -680,7 +685,7 @@ main(int arc, char **argv)
 	extract_mac_range(&g.src_mac);
 	extract_mac_range(&g.dst_mac);
 
-	if(strcmp(g.mode,GEN)==0 && strcmp(g.proto, "all")==0){
+	/*if(strcmp(g.mode,GEN)==0 && strcmp(g.proto, "all")==0){
 		D("Please, select only one protocol for gen modality");
 		usage();
 	}
@@ -688,11 +693,11 @@ main(int arc, char **argv)
 		D("Please, input a file for using read modality");
 		usage();
 	}
-	
+
 	if(strcmp(g.blocking,"no")!=0 && strcmp(g.blocking,"yes")!=0) {
 		D("Invalid blocking argument, insert yes or no");
 		usage();
-	}
+	}*/
 
 
 

@@ -11,6 +11,7 @@ struct protocol {
 static struct protocol pkt_map[] = {
 		{ "udp" , initialize_packet_udp },
 		{ "icmp", initialize_packet_icmp },
+		{ "pcap", NULL },
 		{ NULL, NULL}
 };
 
@@ -76,18 +77,18 @@ start_threads(struct glob_arg *g, struct targ *targs)
 			t->affinity = -1;
 		}
 
-		if(strcmp(g->mode,R_PCAP) != 0){
 
+		int idx = 0;
+		while( pkt_map[idx].key != NULL ) {
+			if( strcmp(pkt_map[idx].key, g->mode) == 0 ) break;
+			idx++;
+		}
+		if( pkt_map[idx].f_init != NULL ) {
 			void (*ptrf) ( struct targ *targs );
-			int idx = 0;
-			while( pkt_map[idx].key != NULL ) {
-				if( strcmp(pkt_map[idx].key, g->proto) == 0 ) break;
-				idx++;
-			}
 			ptrf = pkt_map[idx].f_init;
 			ptrf(t);
-
 		}
+
 
 		if (pthread_create(&t->thread, NULL, g->td_body, t) == -1) {
 			D("Unable to create thread %d: %s", i, strerror(errno));

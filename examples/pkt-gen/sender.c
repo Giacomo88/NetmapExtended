@@ -2,15 +2,14 @@
 
 pcap_t *head=NULL;
 int virt_header;
-uint8_t proto_idx, desired_proto;
+uint8_t proto_idx;
 char *filename=NULL;
-char *protocol_name;
+u_char *buffer=NULL;
 
 struct protocol {
 	char *key;
 	void *pkt_ptr;
 	void *f_update;
-	short int protocol;
 };
 
 static __inline struct timespec
@@ -133,15 +132,21 @@ dump_payload(char *p, int len, struct netmap_ring *ring, int cur)
  *	DST_IP DST_PORT SRC_IP SRC_PORT
  */
 static void
-update_addresses_udp(struct pkt_udp *pkt, struct glob_arg *g)
+update_addresses_udp(void **frame, struct glob_arg *g)
 {
 	uint32_t a;
 	uint16_t p;
+
+	/* Align the pointer to the structure pkt_udp */
+	*frame = *frame - (sizeof(struct virt_header) - g->virt_header);
+
+	struct pkt_udp *pkt = (struct pkt_udp *)*frame;
 	struct ip *ip = &pkt->ip;
 	struct udphdr *udp = &pkt->udp;
 
 	do {
 		p = ntohs(udp->uh_sport);
+
 		if (p < g->src_ip.port1) { /* just inc, no wrap */
 			udp->uh_sport = htons(p + 1);
 			break;
@@ -171,12 +176,21 @@ update_addresses_udp(struct pkt_udp *pkt, struct glob_arg *g)
 		ip->ip_dst.s_addr = htonl(g->dst_ip.start);
 	} while (0);
 	// update checksum
+
+	*frame = *frame + (sizeof(struct virt_header) - g->virt_header);
+
 }
 
 static void
-update_addresses_icmp(struct pkt_icmp *pkt, struct glob_arg *g)
+update_addresses_icmp(void **frame, struct glob_arg *g)
 {
 	uint32_t a;
+
+	/* Align the pointer to the structure pkt_icmp */
+	*frame = *frame - (sizeof(struct virt_header) - g->virt_header);
+
+	struct pkt_udp *pkt = (struct pkt_udp *)*frame;
+
 	struct ip *ip = &pkt->ip;
 
 	do {
@@ -194,18 +208,18 @@ update_addresses_icmp(struct pkt_icmp *pkt, struct glob_arg *g)
 		}
 		ip->ip_dst.s_addr = htonl(g->dst_ip.start);
 	} while (0);
+	*frame = *frame + (sizeof(struct virt_header) - g->virt_header);
 	// update checksum
 }
 
 static void
-pcap_reader(u_char **buffer, int *len, struct protocol pkt_map[])
+pcap_reader(void **frame, struct glob_arg *g)
 {
 	struct pcap_pkthdr header; // The header that pcap gives us
 	const u_char *packet; // The actual packet
 	int size_vh = sizeof(struct virt_header);
 	u_char *pad = (u_char*)malloc(size_vh);
 	memset(pad,0, size_vh);
-	int i=0;
 
 	if(head==NULL) {
 		pcap_close(head);
@@ -245,24 +259,23 @@ pcap_reader(u_char **buffer, int *len, struct protocol pkt_map[])
 
 		struct ip *ip_hdr = (struct ip *)&pkt_ptr[ether_offset]; //point to an IP header structure
 
-		i=0;
-		while((ip_hdr->ip_p != pkt_map[i].protocol) && (pkt_map[i].key !=NULL)) i++;
+		if(ip_hdr->ip_p == IPPROTO_ICMP || ip_hdr->ip_p == IPPROTO_UDP){
 
-		if(pkt_map[i].key == NULL) continue;
-		else {
-			if(strcmp(protocol_name,"all")==0 || ip_hdr->ip_p == desired_proto) {
-
-				*len = header.len;
-				if(*buffer!=NULL) free(*buffer);
-				*buffer = (u_char*)malloc(*len + size_vh);
-				memcpy(*buffer,pad,size_vh);
-				memcpy(*buffer + size_vh, pkt_ptr, *len);
-				break;
-			} else
-				continue;
-		}
+			g->pkt_size = header.len;
+			if(buffer!=NULL) free(buffer);
+			buffer = (u_char*)malloc(g->pkt_size  + size_vh);
+			memcpy(buffer,pad,size_vh);
+			memcpy(buffer + size_vh, pkt_ptr, g->pkt_size );
+			break;
+		} else
+			continue;
 	}
+
+	*frame = buffer;
+	*frame += sizeof(struct virt_header) - virt_header;
+	g->pkt_size += virt_header;
 }
+
 
 static int
 send_packets(struct netmap_ring *ring, void *frame,
@@ -272,7 +285,8 @@ send_packets(struct netmap_ring *ring, void *frame,
 
 	u_int n, sent, cur = ring->cur;
 	u_int fcnt;
-	u_char *buffer=NULL;
+	void (*ptrf) ( void *pkt, struct glob_arg *g );
+	ptrf = pkt_map[proto_idx].f_update;
 
 	n = nm_ring_space(ring);
 	if (n < count)
@@ -298,41 +312,27 @@ send_packets(struct netmap_ring *ring, void *frame,
 		char *p = NETMAP_BUF(ring, slot->buf_idx);
 		slot->flags = 0;
 		slot->len = size;
+
 		if (options & OPT_INDIRECT) {
 			slot->flags |= NS_INDIRECT;
 			slot->ptr = (uint64_t)((uintptr_t)frame);
 		} else if (options & OPT_COPY) {
 
 			nm_pkt_copy(frame, p, size);
-
 			if (fcnt == nfrags) {
-				if(strcmp(g->mode,GEN)==0) {
-					void (*ptrf) ( void *pkt, struct glob_arg *g);
-					ptrf = pkt_map[proto_idx].f_update;
-					ptrf(pkt_map[proto_idx].pkt_ptr, g);
 
-				} else {
-					pcap_reader(&buffer, &size, pkt_map);
-					frame = buffer;
-					frame += sizeof(struct virt_header) - virt_header;
-					size += virt_header;
-				}
+				ptrf(&frame, g);
+				size = g->pkt_size;
+
 			}
 		} else if (options & OPT_MEMCPY) {
 
 			memcpy(p, frame, size);
 			if (fcnt == nfrags) {
-				if(strcmp(g->mode,GEN)==0) {
-					void (*ptrf) ( void *pkt, struct glob_arg *g);
-					ptrf = pkt_map[proto_idx].f_update;
-					ptrf(pkt_map[proto_idx].pkt_ptr, g);
 
-				} else {
-					pcap_reader(&buffer, &size, pkt_map);
-					frame = buffer;
-					frame += sizeof(struct virt_header) - virt_header;
-					size += virt_header;
-				}
+				ptrf(&frame, g);
+				size = g->pkt_size;
+
 			}
 		} else if (options & OPT_PREFETCH) {
 			__builtin_prefetch(p);
@@ -371,29 +371,26 @@ sender_body(void *data)
 
 	void *frame=NULL;
 	int size=0;
-	u_char *buffer=NULL;
+	//u_char *buffer=NULL;
 
 	struct protocol pkt_map[] = {
-			{ "udp", &targ->pkt_udp, update_addresses_udp, IPPROTO_UDP },
-			{ "icmp", &targ->pkt_icmp, update_addresses_icmp, IPPROTO_ICMP },
-			{ "all", NULL, NULL, -1 },
-			{ NULL, NULL, NULL, -1 }
+			{ "udp", &targ->pkt_udp, update_addresses_udp },
+			{ "icmp", &targ->pkt_icmp, update_addresses_icmp },
+			{ "pcap", &frame, pcap_reader },
+			{ NULL, NULL, NULL }
 	};
 
 	virt_header = targ->g->virt_header;
 
-	protocol_name = targ->g->proto;
-
 	proto_idx = 0;
 	while( pkt_map[proto_idx].key != NULL ) {
-		if( strcmp(pkt_map[proto_idx].key, targ->g->proto) == 0 ) {
-			desired_proto = pkt_map[proto_idx].protocol;
+		if( strcmp(pkt_map[proto_idx].key, targ->g->mode) == 0 ) {
 			break;
 		}
 		proto_idx++;
 	}
 
-	if(strcmp(targ->g->mode,GEN)==0) {
+	if(strcmp(targ->g->mode, "pcap")!=0) {
 
 		frame = pkt_map[proto_idx].pkt_ptr;
 		frame += sizeof(struct virt_header) - targ->g->virt_header;
@@ -408,11 +405,13 @@ sender_body(void *data)
 			D("Couldn't open pcap file %s: %s\n",filename , errbuf);
 			goto quit;
 		}
-		pcap_reader(&buffer,&size, pkt_map);
-		frame = buffer;
-		frame += sizeof(struct virt_header) - targ->g->virt_header;
-		size += targ->g->virt_header;
+		pcap_reader(&frame, targ->g);
+		size = targ->g->pkt_size;
 	}
+
+	void (*ptrf) ( void *pkt, struct glob_arg *g);
+	ptrf = pkt_map[proto_idx].f_update;
+
 
 	D("start, fd %d main_fd %d", targ->fd, targ->g->main_fd);
 	if (setaffinity(targ->thread, targ->affinity))
@@ -432,17 +431,9 @@ sender_body(void *data)
 		for (i = 0; !targ->cancel && (n == 0 || sent < n); i++) {
 			if (write(targ->g->main_fd, frame, size) != -1)
 				sent++;
-			if(strcmp(targ->g->mode,GEN)==0) {
-				void (*ptrf) ( void *pkt, struct glob_arg *g);
-				ptrf = pkt_map[proto_idx].f_update;
-				ptrf(pkt_map[proto_idx].pkt_ptr, targ->g);
 
-			} else {
-				pcap_reader(&buffer,&size, pkt_map);
-				frame = buffer;
-				frame += sizeof(struct virt_header) - targ->g->virt_header;
-				size += targ->g->virt_header;
-			}
+			ptrf(&frame, targ->g);
+			size = targ->g->pkt_size;
 
 			if (i > 10000) {
 				targ->count = sent;
@@ -456,16 +447,9 @@ sender_body(void *data)
 		for (i = 0; !targ->cancel && (n == 0 || sent < n); i++) {
 			if (pcap_inject(p, frame, size) != -1)
 				sent++;
-			if(strcmp(targ->g->mode,GEN)==0) {
-				void (*ptrf) ( void *pkt, struct glob_arg *g);
-				ptrf = pkt_map[proto_idx].f_update;
-				ptrf(pkt_map[proto_idx].pkt_ptr, targ->g);
-			} else {
-				pcap_reader(&buffer, &size, pkt_map);
-				frame = buffer;
-				frame += sizeof(struct virt_header) - targ->g->virt_header;
-				size += targ->g->virt_header;
-			}
+
+			ptrf(&frame, targ->g);
+			size = targ->g->pkt_size;
 
 			if (i > 10000) {
 				targ->count = sent;
@@ -516,7 +500,6 @@ sender_body(void *data)
 				if (frags > 1)
 					limit = ((limit + frags - 1) / frags) * frags;
 
-
 				m = send_packets(txring,frame, size, targ->g,
 						limit, options, frags, pkt_map);
 
@@ -552,7 +535,7 @@ sender_body(void *data)
 	/* reset the ``used`` flag. */
 	targ->used = 0;
 
-	if(strcmp(targ->g->mode,R_PCAP)==0)
+	if(strcmp(targ->g->mode,"pcpa")==0)
 	{
 		free(buffer);
 		pcap_close(head);  //close the pcap file
