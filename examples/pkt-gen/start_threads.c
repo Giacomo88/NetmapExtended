@@ -2,6 +2,7 @@
 #include "udp_packet.h"
 #include "icmp_packet.h"
 #include "receiver.h"
+#include "pcap_reader.h"
 
 struct protocol {
 	char *key;
@@ -11,7 +12,7 @@ struct protocol {
 static struct protocol pkt_map[] = {
 		{ "udp" , initialize_packet_udp },
 		{ "icmp", initialize_packet_icmp },
-		{ "pcap", NULL },
+		{ "pcap", initialize_reader },
 		{ NULL, NULL}
 };
 
@@ -77,18 +78,15 @@ start_threads(struct glob_arg *g, struct targ *targs)
 			t->affinity = -1;
 		}
 
-
 		int idx = 0;
 		while( pkt_map[idx].key != NULL ) {
 			if( strcmp(pkt_map[idx].key, g->mode) == 0 ) break;
 			idx++;
 		}
-		if( pkt_map[idx].f_init != NULL ) {
-			void (*ptrf) ( struct targ *targs );
-			ptrf = pkt_map[idx].f_init;
-			ptrf(t);
-		}
 
+		void (*ptrf) ( struct targ *targs );
+		ptrf = pkt_map[idx].f_init;
+		ptrf(t);
 
 		if (pthread_create(&t->thread, NULL, g->td_body, t) == -1) {
 			D("Unable to create thread %d: %s", i, strerror(errno));

@@ -31,7 +31,7 @@ pinger_body(void *data)
 
 	int idx = 0;
 	while( pkt_map[idx].key != NULL ) {
-		if( strcmp(pkt_map[idx].key, targ->g->proto) == 0 ) break;
+		if( strcmp(pkt_map[idx].key, targ->g->mode) == 0 ) break;
 		idx++;
 	}
 

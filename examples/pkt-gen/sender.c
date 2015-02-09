@@ -1,6 +1,7 @@
 #include "everything.h"
+#include "pcap_reader.h"
 
-pcap_t *head=NULL;
+
 int virt_header;
 uint8_t proto_idx;
 char *filename=NULL;
@@ -212,70 +213,6 @@ update_addresses_icmp(void **frame, struct glob_arg *g)
 	// update checksum
 }
 
-static void
-pcap_reader(void **frame, struct glob_arg *g)
-{
-	struct pcap_pkthdr header; // The header that pcap gives us
-	const u_char *packet; // The actual packet
-	int size_vh = sizeof(struct virt_header);
-	u_char *pad = (u_char*)malloc(size_vh);
-	memset(pad,0, size_vh);
-
-	if(head==NULL) {
-		pcap_close(head);
-		char errbuf[PCAP_ERRBUF_SIZE];
-		head = pcap_open_offline(filename, errbuf);   //call pcap library function
-
-		if (head == NULL) {
-			D("Couldn't open pcap file %s: %s\n",filename , errbuf);
-			exit(EXIT_FAILURE);
-		}
-	}
-
-	while (1) {
-
-		if((packet = pcap_next(head,&header))==NULL) {
-			pcap_close(head);
-			char errbuf[PCAP_ERRBUF_SIZE]; //not sure what to do with this, oh well
-			head = pcap_open_offline(filename, errbuf);   //call pcap library function
-
-			if (head == NULL) {
-				D("Couldn't open pcap file %s: %s\n",filename , errbuf);
-				exit(EXIT_FAILURE);
-			}
-			continue;
-		}
-
-		u_char *pkt_ptr = (u_char *)packet; //cast a pointer to the packet data
-
-		//parse the first (ethernet) header, grabbing the type field
-		int ether_type = ((int)(pkt_ptr[12]) << 8) | (int)pkt_ptr[13];
-		int ether_offset = 0;
-
-		if (ether_type == ETHERTYPE_IP) //most common IPv4
-			ether_offset = 14;
-		else
-			continue; // non mi importa dei non IPV4
-
-		struct ip *ip_hdr = (struct ip *)&pkt_ptr[ether_offset]; //point to an IP header structure
-
-		if(ip_hdr->ip_p == IPPROTO_ICMP || ip_hdr->ip_p == IPPROTO_UDP){
-
-			g->pkt_size = header.len;
-			if(buffer!=NULL) free(buffer);
-			buffer = (u_char*)malloc(g->pkt_size  + size_vh);
-			memcpy(buffer,pad,size_vh);
-			memcpy(buffer + size_vh, pkt_ptr, g->pkt_size );
-			break;
-		} else
-			continue;
-	}
-
-	*frame = buffer;
-	*frame += sizeof(struct virt_header) - virt_header;
-	g->pkt_size += virt_header;
-}
-
 
 static int
 send_packets(struct netmap_ring *ring, void *frame,
@@ -397,14 +334,16 @@ sender_body(void *data)
 		size = targ->g->pkt_size + targ->g->virt_header;
 	} else { // mode read
 
-		filename = targ->g->pcap_file;
-		char errbuf[PCAP_ERRBUF_SIZE]; //not sure what to do with this, oh well
+		//filename = targ->g->pcap_file;
+		/*char errbuf[PCAP_ERRBUF_SIZE]; //not sure what to do with this, oh well
 		head = pcap_open_offline(filename, errbuf);   //call pcap library function
 
 		if (head == NULL) {
 			D("Couldn't open pcap file %s: %s\n",filename , errbuf);
 			goto quit;
-		}
+		}*/
+		//if( initialize_reader(targ) < 0 ) goto quit;
+
 		pcap_reader(&frame, targ->g);
 		size = targ->g->pkt_size;
 	}
@@ -538,7 +477,8 @@ sender_body(void *data)
 	if(strcmp(targ->g->mode,"pcpa")==0)
 	{
 		free(buffer);
-		pcap_close(head);  //close the pcap file
+		//pcap_close(head);  //close the pcap file
+		close_reader();
 	}
 
 	return (NULL);
