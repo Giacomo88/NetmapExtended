@@ -1,4 +1,5 @@
 #include "everything.h"
+#include "extract.h"
 
 
 unsigned short checksumIcmp(void *b, int len)
@@ -70,7 +71,7 @@ initialize_packet_icmp(struct targ *targ)
 	uint16_t paylen = targ->g->pkt_size - sizeof(*eh) - sizeof(struct ip);
 	const char *payload = targ->g->options & OPT_INDIRECT ?
 			indirect_payload : default_payload;
-	int i, l0 = strlen(payload);
+	int i, j, l0 = strlen(payload);
 
 	/* create a nice NUL-terminated string */
 	for (i = 0; i < paylen; i += l0) {
@@ -80,7 +81,61 @@ initialize_packet_icmp(struct targ *targ)
 	}
 	pkt->body[i-1] = '\0';
 	ip = &pkt->ip;
+	
+	
+	///
+	
+	struct long_opt_parameter data_param[] = {
+				{ "dst_ip", &targ->g->dst_ip.name },
+				{ "src_ip", &targ->g->src_ip.name },
+				{ "dst-mac", &targ->g->dst_mac.name },
+				{ "src-mac", &targ->g->src_mac.name },
+				{ NULL, NULL } 
+		};
+	
+	for(i=0; targ->g->gen_param[i] != NULL; i++) {
+		
+		for(j=0; data_param[j].name != NULL; j++) {
+			if(strncmp(data_param[i].name, targ->g->gen_param[j], strlen(data_param[i].name)) == 0){
+				*((uintptr_t*)(data_param[i].value_loc)) = (uintptr_t) &(targ->g->gen_param[j][strlen(data_param[i].name)+1]);
+				break;
+			}
+		}
+	}
+	free(targ->g->gen_param);
+	///
+	
+	if (targ->g->src_mac.name == NULL) {
+			static char mybuf[20] = "00:00:00:00:00:00";
+			/* retrieve source mac address. */
+			if (source_hwaddr(targ->g->ifname, mybuf) == -1) {
+				D("Unable to retrieve source mac");
+				// continue, fail later
+			}
+			targ->g->src_mac.name = mybuf;
+		}
+	
+		/* extract address ranges */
+		extract_ip_range(&targ->g->src_ip);
+		extract_ip_range(&targ->g->dst_ip);
+		extract_mac_range(&targ->g->src_mac);
+		extract_mac_range(&targ->g->dst_mac);
+	
+		if (targ->g->src_ip.start != targ->g->src_ip.end ||
+				targ->g->src_ip.port0 != targ->g->src_ip.port1 ||
+					targ->g->dst_ip.start != targ->g->dst_ip.end ||
+					targ->g->dst_ip.port0 != targ->g->dst_ip.port1)
+				targ->g->options |= OPT_COPY;
 
+			if (targ->g->virt_header != 0 && targ->g->virt_header != VIRT_HDR_1
+					&& targ->g->virt_header != VIRT_HDR_2) {
+				D("bad virtio-net-header length");
+				//usage();
+			}
+			
+	///
+
+	
 
 	/* prepare the headers */
 	ip->ip_v = IPVERSION;

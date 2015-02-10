@@ -6,6 +6,25 @@ static pcap_t *head=NULL;
 int 
 initialize_reader(struct targ *targ)
 {
+	int i, j;
+	
+	struct long_opt_parameter data_param[] = {
+				{ "pcap-file", &targ->g->pcap_file },
+				{ NULL, NULL } 
+		};
+	
+	for(i=0; targ->g->gen_param[i] != NULL; i++) {
+		
+		for(j=0; data_param[j].name != NULL; j++) {
+			if(strncmp(data_param[i].name, targ->g->gen_param[j], strlen(data_param[i].name)) == 0){
+				*((uintptr_t*)(data_param[i].value_loc)) = (uintptr_t) &(targ->g->gen_param[j][strlen(data_param[i].name)+1]);
+				break;
+			}
+		}
+	}
+	
+	free(targ->g->gen_param);
+	
 	filename = targ->g->pcap_file;
 	char errbuf[PCAP_ERRBUF_SIZE]; //not sure what to do with this, oh well
 	head = pcap_open_offline(filename, errbuf);   //call pcap library function

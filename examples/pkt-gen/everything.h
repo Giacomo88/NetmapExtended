@@ -121,6 +121,9 @@ struct glob_arg {
 	struct ip_range dst_ip;
 	struct mac_range dst_mac;
 	struct mac_range src_mac;
+	
+	char **gen_param;
+	int verbose;
 	int pkt_size;
 	int burst;
 	int forever;
@@ -217,4 +220,7 @@ struct targ {
 #define PKT_ICMP 1
 #define ALL_PROTO 255
 */
-
+struct long_opt_parameter {
+	char *name;		//parameter name
+	void *value_loc;	//where to store the value
+};

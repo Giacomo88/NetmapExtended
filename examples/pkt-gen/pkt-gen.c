@@ -47,12 +47,11 @@
 #include "udp_packet.h"
 #include "icmp_packet.h"
 
-int verbose = 0;
 /*
  * extract the extremes from a range of ipv4 addresses.
  * addr_lo[-addr_hi][:port_lo[-port_hi]]
  */
-static void
+/*static void
 extract_ip_range(struct ip_range *r)
 {
 	char *ap, *pp;
@@ -63,12 +62,12 @@ extract_ip_range(struct ip_range *r)
 	r->port0 = r->port1 = 0;
 	r->start = r->end = 0;
 
-	/* the first - splits start/end of range */
-	ap = index(r->name, '-');	/* do we have ports ? */
+	// the first - splits start/end of range 
+	ap = index(r->name, '-');	// do we have ports ?
 	if (ap) {
 		*ap++ = '\0';
 	}
-	/* grab the initial values (mandatory) */
+	// grab the initial values (mandatory)
 	pp = index(r->name, ':');
 	if (pp) {
 		*pp++ = '\0';
@@ -133,7 +132,7 @@ extract_mac_range(struct mac_range *r)
 	if (verbose)
 		D("%s starts at %s", r->name, ether_ntoa(&r->start));
 }
-
+*/
 struct targ *targs;
 static int global_nthreads;
 
@@ -223,7 +222,7 @@ parse_nmr_config(const char* conf, struct nmreq *nmr)
  * locate the src mac address for our interface, put it
  * into the user-supplied buffer. return 0 if ok, -1 on error.
  */
-static int
+/*static int
 source_hwaddr(const char *ifname, char *buf)
 {
 	struct ifaddrs *ifaphead, *ifap;
@@ -253,7 +252,7 @@ source_hwaddr(const char *ifname, char *buf)
 	}
 	freeifaddrs(ifaphead);
 	return ifap ? 0 : 1;
-}
+}*/
 
 static void
 usage(void)
@@ -383,10 +382,7 @@ static struct option long_options[] = {
 		{0, 0, 0, 0 }
 };
 
-struct long_opt_parameter {
-	char *name;		//parameter name
-	void *value_loc;	//where to store the value
-};
+
 
 
 int
@@ -401,10 +397,10 @@ main(int arc, char **argv)
 	int devqueues = 1;	/* how many device queues */
 	int opt_index=0;	/* index of long options (getopt_long) */
 	int index=0;
-	int incorrect_param=1;	/* long option parameter validity: 1=not correct, 0=correct */
+	//int incorrect_param=1;	/* long option parameter validity: 1=not correct, 0=correct */
 
 	bzero(&g, sizeof(g));
-
+	g.verbose = 0;
 	g.main_fd = -1;
 	g.td_body = receiver_body;
 	g.report_interval = 1000;	/* report interval */
@@ -424,18 +420,19 @@ main(int arc, char **argv)
 	g.nmr_config = "";
 	g.virt_header = 0;
 	g.mode = "udp";
+	int dparam_counter = 0;
 /*	g.proto = "udp";
 	g.blocking = "yes";*/
 
 	//parameters of option --data
-	struct long_opt_parameter data_param[] = {
+	/*struct long_opt_parameter data_param[] = {
 			{ "dst_ip", &g.dst_ip.name },
 			{ "src_ip", &g.src_ip.name },
 			{ "dst-mac", &g.dst_mac.name },
 			{ "src-mac", &g.src_mac.name },
 			{ "pcap-file", &g.pcap_file },
 			{ NULL, NULL } 
-	};
+	};*/
 
 
 	//parameters of option --arg
@@ -457,51 +454,26 @@ main(int arc, char **argv)
 
 		case 0: // LONG_OPTIONS CASE
 
-			index = optind-1;
-
-			while(index < arc && argv[index][0] != '-') {
-
-				//--data case
-				if(strcmp(long_options[opt_index].name, "data") == 0) {
-
-					incorrect_param=1;
-
-					for(i=0; data_param[i].name != NULL; i++) 
-					{
-						//compare parameter name in data_param with parameter specified in argv
-						if(strncmp(data_param[i].name, argv[index], strlen(data_param[i].name)) == 0){
-							*((uintptr_t*)(data_param[i].value_loc)) = (uintptr_t) &(argv[index][strlen(data_param[i].name)+1]);
-							incorrect_param=0;
-							break;
+			if(strcmp(long_options[opt_index].name, "data") == 0) 
+						{	
+							//count the number of parameters for --data
+							for(index = optind-1; index < arc && argv[index][0] != '-'; index++)
+								dparam_counter++;
+							
+							//allocate memory for g.data structure (array of string)
+							g.gen_param = (char**)malloc(sizeof(char) * dparam_counter);
+							int i=0;
+							
+							//insert every paramenter in a position of g.data
+							for(index = optind-1; index < arc && argv[index][0] != '-'; index++)
+							{
+								g.gen_param[i] = argv[index];
+								printf("data[%d] = %s\n", i, g.gen_param[i]);
+								i++;
+							}
 						}
-					}	
-				}
-				//--arg case
-				/*else if(strcmp(long_options[opt_index].name, "arg") == 0) {
-					incorrect_param=1;
 
-					for(i=0; arg_param[i].name != NULL; i++) 
-					{
-						//compare parameter name in arg_param with parameter specified in argv
-						if(strncmp(arg_param[i].name, argv[index], strlen(arg_param[i].name)) == 0){
-				 *((uintptr_t*)(arg_param[i].value_loc)) = (uintptr_t) &(argv[index][strlen(arg_param[i].name)+1]);
-							incorrect_param=0;
-							break;
-						}
-					}
-				}*/
-
-				if(incorrect_param == 1)
-				{
-					D("Invalid parameter in --%s option\n", long_options[opt_index].name);
-					break;
-				}
-
-				index++;
-			}
-
-			break;
-
+						break;
 		case 'g':
 			g.mode = optarg;
 			printf("mode: %s",optarg);
@@ -615,7 +587,7 @@ main(int arc, char **argv)
 			g.src_mac.name = optarg;
 			break;*/
 		case 'v':
-			verbose++;
+			g.verbose++;
 			break;
 		case 'R':
 			g.tx_rate = atoi(optarg);
@@ -670,20 +642,20 @@ main(int arc, char **argv)
 		usage();
 	}
 
-	if (g.src_mac.name == NULL) {
+	/*if (g.src_mac.name == NULL) {
 		static char mybuf[20] = "00:00:00:00:00:00";
-		/* retrieve source mac address. */
+		// retrieve source mac address.
 		if (source_hwaddr(g.ifname, mybuf) == -1) {
 			D("Unable to retrieve source mac");
 			// continue, fail later
 		}
 		g.src_mac.name = mybuf;
-	}
+	}*/
 	/* extract address ranges */
-	extract_ip_range(&g.src_ip);
+	/*extract_ip_range(&g.src_ip);
 	extract_ip_range(&g.dst_ip);
 	extract_mac_range(&g.src_mac);
-	extract_mac_range(&g.dst_mac);
+	extract_mac_range(&g.dst_mac);*/
 
 	/*if(strcmp(g.mode,GEN)==0 && strcmp(g.proto, "all")==0){
 		D("Please, select only one protocol for gen modality");
@@ -700,7 +672,7 @@ main(int arc, char **argv)
 	}*/
 
 
-
+/*
 	if (g.src_ip.start != g.src_ip.end ||
 			g.src_ip.port0 != g.src_ip.port1 ||
 			g.dst_ip.start != g.dst_ip.end ||
@@ -712,7 +684,8 @@ main(int arc, char **argv)
 		D("bad virtio-net-header length");
 		usage();
 	}
-
+*/
+	
 	if (g.dev_type == DEV_TAP) {
 		D("want to use tap %s", g.ifname);
 		g.main_fd = tap_alloc(g.ifname);
@@ -772,7 +745,7 @@ main(int arc, char **argv)
 			// continue, fail later
 		}
 
-		if (verbose) {
+		if (g.verbose) {
 			struct netmap_if *nifp = g.nmd->nifp;
 			struct nmreq *req = &g.nmd->req;
 
