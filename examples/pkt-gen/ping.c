@@ -1,8 +1,10 @@
 #include "everything.h"
+#include "udp_packet.h"
 
 struct protocol {
 	char *key;
 	void *pkt_ptr;
+	void *upd_check;
 };
 
 /*
@@ -24,9 +26,9 @@ pinger_body(void *data)
 	uint32_t count = 0, min = 1000000000, av = 0;
 
 	struct protocol pkt_map[] = {
-			{ "udp", &targ->pkt_udp },
-			{ "icmp", &targ->pkt_icmp },
-			{ NULL, NULL }
+			{ "udp", &targ->pkt_udp, checksumUdp },
+			{ "icmp", &targ->pkt_icmp, NULL },
+			{ NULL, NULL, NULL }
 	};
 
 	int idx = 0;
@@ -65,6 +67,9 @@ pinger_body(void *data)
 				tp = (struct tstamp *)(p+46);
 				tp->sec = (uint32_t)ts.tv_sec;
 				tp->nsec = (uint32_t)ts.tv_nsec;
+				void (*ptrf) ( struct pkt_udp *pkt );
+				ptrf = pkt_map[idx].upd_check;
+				ptrf(pkt_map[idx].pkt_ptr);
 				sent++;
 				ring->head = ring->cur = nm_ring_next(ring, ring->cur);
 			}

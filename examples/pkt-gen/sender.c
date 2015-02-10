@@ -1,5 +1,6 @@
 #include "everything.h"
 #include "pcap_reader.h"
+#include "udp_packet.h"
 
 
 int virt_header;
@@ -177,6 +178,7 @@ update_addresses_udp(void **frame, struct glob_arg *g)
 		ip->ip_dst.s_addr = htonl(g->dst_ip.start);
 	} while (0);
 	// update checksum
+	checksumUdp(pkt);
 
 	*frame = *frame + (sizeof(struct virt_header) - g->virt_header);
 

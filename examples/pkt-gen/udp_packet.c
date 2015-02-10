@@ -35,6 +35,28 @@ wrapsum(u_int32_t sum)
 	return (htons(sum));
 }
 
+void checksumUdp(struct pkt_udp *pkt)
+{
+	struct ip *ip;
+	struct udphdr *udp;
+	
+	ip = &pkt->ip;
+	udp = &pkt->udp;
+
+	uint16_t paylen= htons(ip->ip_len) - sizeof(struct ip);
+
+	ip->ip_sum = 0;
+	ip->ip_sum = wrapsum(checksum(ip, sizeof(*ip), 0));
+	
+	udp->uh_sum = wrapsum(
+	checksum(udp, sizeof(*udp),	
+	checksum(pkt->body,	paylen - sizeof(*udp),	
+	checksum(&ip->ip_src, 2 * sizeof(ip->ip_src), IPPROTO_UDP + (u_int32_t)ntohs(udp->uh_ulen)
+					)
+			)
+	));
+}
+
 /*
  * initialize one packet and prepare for the next one.
  * The copy could be done better instead of repeating it each time.
@@ -132,22 +154,22 @@ initialize_packet_udp(struct targ *targ)
 	ip->ip_p = IPPROTO_UDP;
 	ip->ip_dst.s_addr = htonl(targ->g->dst_ip.start);
 	ip->ip_src.s_addr = htonl(targ->g->src_ip.start);
-	ip->ip_sum = wrapsum(checksum(ip, sizeof(*ip), 0));
+	//ip->ip_sum = wrapsum(checksum(ip, sizeof(*ip), 0));
 
 	udp = &pkt->udp;
 	udp->uh_sport = htons(targ->g->src_ip.port0);
 	udp->uh_dport = htons(targ->g->dst_ip.port0);
 	udp->uh_ulen = htons(paylen);
 
+	checksumUdp(pkt);
 	/* Magic: taken from sbin/dhclient/packet.c */
-	udp->uh_sum = wrapsum(checksum(udp, sizeof(*udp),
-			checksum(pkt->body,
-					paylen - sizeof(*udp),
-					checksum(&ip->ip_src, 2 * sizeof(ip->ip_src),
-							IPPROTO_UDP + (u_int32_t)ntohs(udp->uh_ulen)
+	/*udp->uh_sum = wrapsum(
+	checksum(udp, sizeof(*udp),	
+	checksum(pkt->body,	paylen - sizeof(*udp),	
+	checksum(&ip->ip_src, 2 * sizeof(ip->ip_src), IPPROTO_UDP + (u_int32_t)ntohs(udp->uh_ulen)
 					)
 			)
-	));
+	));*/
 
 	eh = &pkt->eh;
 	bcopy(&targ->g->src_mac.start, eh->ether_shost, 6);
