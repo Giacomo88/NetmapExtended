@@ -1,7 +1,6 @@
 #include "everything.h"
 #include "extract.h"
 
-
 /* Compute the checksum of the given ip header. */
 static uint16_t
 checksum(const void *data, uint16_t len, uint32_t sum)
@@ -39,7 +38,7 @@ void checksumUdp(struct pkt_udp *pkt)
 {
 	struct ip *ip;
 	struct udphdr *udp;
-	
+
 	ip = &pkt->ip;
 	udp = &pkt->udp;
 
@@ -47,21 +46,22 @@ void checksumUdp(struct pkt_udp *pkt)
 
 	ip->ip_sum = 0;
 	ip->ip_sum = wrapsum(checksum(ip, sizeof(*ip), 0));
-	
+
+	udp->uh_sum = 0;
 	udp->uh_sum = wrapsum(
-	checksum(udp, sizeof(*udp),	
-	checksum(pkt->body,	paylen - sizeof(*udp),	
-	checksum(&ip->ip_src, 2 * sizeof(ip->ip_src), IPPROTO_UDP + (u_int32_t)ntohs(udp->uh_ulen)
+			checksum(udp, sizeof(*udp),
+					checksum(pkt->body,	paylen - sizeof(*udp),
+							checksum(&ip->ip_src, 2 * sizeof(ip->ip_src), IPPROTO_UDP + (u_int32_t)ntohs(udp->uh_ulen)
+							)
 					)
-			)
-	));
+			));
 }
 
 /*
  * initialize one packet and prepare for the next one.
  * The copy could be done better instead of repeating it each time.
  */
-void
+void *
 initialize_packet_udp(struct targ *targ)
 {
 	const char *default_payload="netmap pkt-gen DIRECT payload\n"
@@ -86,19 +86,19 @@ initialize_packet_udp(struct targ *targ)
 		bcopy(payload, pkt->body + i, l0);
 	}
 	pkt->body[i-1] = '\0';
-	
+
 	///
-	
+
 	struct long_opt_parameter data_param[] = {
-				{ "dst_ip", &targ->g->dst_ip.name },
-				{ "src_ip", &targ->g->src_ip.name },
-				{ "dst-mac", &targ->g->dst_mac.name },
-				{ "src-mac", &targ->g->src_mac.name },
-				{ NULL, NULL } 
-		};
-	
+			{ "dst_ip", &targ->g->dst_ip.name },
+			{ "src_ip", &targ->g->src_ip.name },
+			{ "dst-mac", &targ->g->dst_mac.name },
+			{ "src-mac", &targ->g->src_mac.name },
+			{ NULL, NULL }
+	};
+
 	for(i=0; targ->g->gen_param[i] != NULL; i++) {
-		
+
 		for(j=0; data_param[j].name != NULL; j++) {
 			if(strncmp(data_param[i].name, targ->g->gen_param[j], strlen(data_param[i].name)) == 0){
 				*((uintptr_t*)(data_param[i].value_loc)) = (uintptr_t) &(targ->g->gen_param[j][strlen(data_param[i].name)+1]);
@@ -106,43 +106,43 @@ initialize_packet_udp(struct targ *targ)
 			}
 		}
 	}
-	
+
 	free(targ->g->gen_param);
 
 	///
-	
-	if (targ->g->src_mac.name == NULL) {
-			static char mybuf[20] = "00:00:00:00:00:00";
-			/* retrieve source mac address. */
-			if (source_hwaddr(targ->g->ifname, mybuf) == -1) {
-				D("Unable to retrieve source mac");
-				// continue, fail later
-			}
-			targ->g->src_mac.name = mybuf;
-		}
-	
-		/* extract address ranges */
-		extract_ip_range(&targ->g->src_ip);
-		extract_ip_range(&targ->g->dst_ip);
-		extract_mac_range(&targ->g->src_mac);
-		extract_mac_range(&targ->g->dst_mac);
-	
-		if (targ->g->src_ip.start != targ->g->src_ip.end ||
-				targ->g->src_ip.port0 != targ->g->src_ip.port1 ||
-					targ->g->dst_ip.start != targ->g->dst_ip.end ||
-					targ->g->dst_ip.port0 != targ->g->dst_ip.port1)
-				targ->g->options |= OPT_COPY;
 
-			if (targ->g->virt_header != 0 && targ->g->virt_header != VIRT_HDR_1
-					&& targ->g->virt_header != VIRT_HDR_2) {
-				D("bad virtio-net-header length");
-				//usage();
-			}
-			
+	if (targ->g->src_mac.name == NULL) {
+		static char mybuf[20] = "00:00:00:00:00:00";
+		/* retrieve source mac address. */
+		if (source_hwaddr(targ->g->ifname, mybuf) == -1) {
+			D("Unable to retrieve source mac");
+			// continue, fail later
+		}
+		targ->g->src_mac.name = mybuf;
+	}
+
+	/* extract address ranges */
+	extract_ip_range(&targ->g->src_ip);
+	extract_ip_range(&targ->g->dst_ip);
+	extract_mac_range(&targ->g->src_mac);
+	extract_mac_range(&targ->g->dst_mac);
+
+	if (targ->g->src_ip.start != targ->g->src_ip.end ||
+			targ->g->src_ip.port0 != targ->g->src_ip.port1 ||
+			targ->g->dst_ip.start != targ->g->dst_ip.end ||
+			targ->g->dst_ip.port0 != targ->g->dst_ip.port1)
+		targ->g->options |= OPT_COPY;
+
+	if (targ->g->virt_header != 0 && targ->g->virt_header != VIRT_HDR_1
+			&& targ->g->virt_header != VIRT_HDR_2) {
+		D("bad virtio-net-header length");
+		return(NULL);
+	}
+
 	///
-	
-	ip = &pkt->ip;
+
 	/* prepare the headers */
+	ip = &pkt->ip;
 	ip->ip_v = IPVERSION;
 	ip->ip_hl = 5;
 	ip->ip_id = 0;
@@ -154,22 +154,15 @@ initialize_packet_udp(struct targ *targ)
 	ip->ip_p = IPPROTO_UDP;
 	ip->ip_dst.s_addr = htonl(targ->g->dst_ip.start);
 	ip->ip_src.s_addr = htonl(targ->g->src_ip.start);
-	//ip->ip_sum = wrapsum(checksum(ip, sizeof(*ip), 0));
 
+	/* prepare the headers */
 	udp = &pkt->udp;
 	udp->uh_sport = htons(targ->g->src_ip.port0);
 	udp->uh_dport = htons(targ->g->dst_ip.port0);
 	udp->uh_ulen = htons(paylen);
 
+	/* compute checksum */
 	checksumUdp(pkt);
-	/* Magic: taken from sbin/dhclient/packet.c */
-	/*udp->uh_sum = wrapsum(
-	checksum(udp, sizeof(*udp),	
-	checksum(pkt->body,	paylen - sizeof(*udp),	
-	checksum(&ip->ip_src, 2 * sizeof(ip->ip_src), IPPROTO_UDP + (u_int32_t)ntohs(udp->uh_ulen)
-					)
-			)
-	));*/
 
 	eh = &pkt->eh;
 	bcopy(&targ->g->src_mac.start, eh->ether_shost, 6);
@@ -178,5 +171,5 @@ initialize_packet_udp(struct targ *targ)
 
 	bzero(&pkt->vh, sizeof(pkt->vh));
 	// dump_payload((void *)pkt, targ->g->pkt_size, NULL, 0);
-
+	return (NULL);
 }

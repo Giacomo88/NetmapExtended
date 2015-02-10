@@ -1,5 +1,6 @@
 #include "everything.h"
 #include "udp_packet.h"
+#include "icmp_packet.h"
 
 struct protocol {
 	char *key;
@@ -27,7 +28,7 @@ pinger_body(void *data)
 
 	struct protocol pkt_map[] = {
 			{ "udp", &targ->pkt_udp, checksumUdp },
-			{ "icmp", &targ->pkt_icmp, NULL },
+			{ "icmp", &targ->pkt_icmp, checksumIcmp },
 			{ NULL, NULL, NULL }
 	};
 
@@ -40,6 +41,9 @@ pinger_body(void *data)
 	frame = pkt_map[idx].pkt_ptr;
 	frame += sizeof(struct virt_header) - targ->g->virt_header;
 	size = targ->g->pkt_size + targ->g->virt_header;
+
+	void (*ptrf) ( void *pkt );
+	ptrf = pkt_map[idx].upd_check;
 
 	if (targ->g->nthreads > 1) {
 		D("can only ping with 1 thread");
@@ -61,15 +65,18 @@ pinger_body(void *data)
 				D("-- ouch, cannot send");
 			} else {
 				struct tstamp *tp;
-				nm_pkt_copy(frame, p, size);
+
 				clock_gettime(CLOCK_REALTIME_PRECISE, &ts);
 				bcopy(&sent, p+42, sizeof(sent));
 				tp = (struct tstamp *)(p+46);
 				tp->sec = (uint32_t)ts.tv_sec;
 				tp->nsec = (uint32_t)ts.tv_nsec;
-				void (*ptrf) ( struct pkt_udp *pkt );
-				ptrf = pkt_map[idx].upd_check;
+
+				// recalculate checksum
 				ptrf(pkt_map[idx].pkt_ptr);
+
+				nm_pkt_copy(frame, p, size);
+
 				sent++;
 				ring->head = ring->cur = nm_ring_next(ring, ring->cur);
 			}

@@ -1,27 +1,6 @@
 #include "everything.h"
 #include "extract.h"
 
-
-unsigned short 
-checksumIcmp(void *b, int len)
-{	
-	unsigned short *buf = b;
-	unsigned int sum=0;
-	unsigned short result;
-
-	for ( sum = 0; len > 1; len -= 2 )
-		sum += *buf++;
-	if ( len == 1 )
-		sum += *(unsigned char*)buf;
-	sum = (sum >> 16) + (sum & 0xFFFF);
-	sum += (sum >> 16);
-	result = ~sum;
-	return result;
-}
-
-
-
-
 /* Compute the checksum of the given ip header. */
 static uint16_t
 checksum(const void *data, uint16_t len, uint32_t sum)
@@ -55,6 +34,23 @@ wrapsum(u_int32_t sum)
 	return (htons(sum));
 }
 
+void
+checksumIcmp(struct pkt_icmp *pkt)
+{
+	struct ip *ip;
+	struct icmphdr* icmp;
+
+	ip = &pkt->ip;
+	icmp = &pkt->icmp;
+
+	uint16_t paylen= htons(ip->ip_len) - sizeof(struct ip);
+
+	ip->ip_sum = 0;
+	ip->ip_sum = wrapsum(checksum(ip, sizeof(*ip), 0));
+
+	icmp->checksum = 0;
+	icmp->checksum = wrapsum(checksum(icmp, paylen , 0));
+}
 
 /*
  * initialize one packet and prepare for the next one.
@@ -86,21 +82,19 @@ initialize_packet_icmp(struct targ *targ)
 		bcopy(payload, pkt->body + i, l0);
 	}
 	pkt->body[i-1] = '\0';
-	ip = &pkt->ip;
-	
-	
+
 	///
-	
+
 	struct long_opt_parameter data_param[] = {
-				{ "dst_ip", &targ->g->dst_ip.name },
-				{ "src_ip", &targ->g->src_ip.name },
-				{ "dst-mac", &targ->g->dst_mac.name },
-				{ "src-mac", &targ->g->src_mac.name },
-				{ NULL, NULL } 
-		};
-	
+			{ "dst_ip", &targ->g->dst_ip.name },
+			{ "src_ip", &targ->g->src_ip.name },
+			{ "dst-mac", &targ->g->dst_mac.name },
+			{ "src-mac", &targ->g->src_mac.name },
+			{ NULL, NULL }
+	};
+
 	for(i=0; targ->g->gen_param[i] != NULL; i++) {
-		
+
 		for(j=0; data_param[j].name != NULL; j++) {
 			if(strncmp(data_param[i].name, targ->g->gen_param[j], strlen(data_param[i].name)) == 0){
 				*((uintptr_t*)(data_param[i].value_loc)) = (uintptr_t) &(targ->g->gen_param[j][strlen(data_param[i].name)+1]);
@@ -110,39 +104,38 @@ initialize_packet_icmp(struct targ *targ)
 	}
 	free(targ->g->gen_param);
 	///
-	
-	if (targ->g->src_mac.name == NULL) {
-			static char mybuf[20] = "00:00:00:00:00:00";
-			/* retrieve source mac address. */
-			if (source_hwaddr(targ->g->ifname, mybuf) == -1) {
-				D("Unable to retrieve source mac");
-				// continue, fail later
-			}
-			targ->g->src_mac.name = mybuf;
-		}
-	
-		/* extract address ranges */
-		extract_ip_range(&targ->g->src_ip);
-		extract_ip_range(&targ->g->dst_ip);
-		extract_mac_range(&targ->g->src_mac);
-		extract_mac_range(&targ->g->dst_mac);
-	
-		if (targ->g->src_ip.start != targ->g->src_ip.end ||
-				targ->g->src_ip.port0 != targ->g->src_ip.port1 ||
-					targ->g->dst_ip.start != targ->g->dst_ip.end ||
-					targ->g->dst_ip.port0 != targ->g->dst_ip.port1)
-				targ->g->options |= OPT_COPY;
 
-			if (targ->g->virt_header != 0 && targ->g->virt_header != VIRT_HDR_1
-					&& targ->g->virt_header != VIRT_HDR_2) {
-				D("bad virtio-net-header length");
-				//usage();
-			}
-			
+	if (targ->g->src_mac.name == NULL) {
+		static char mybuf[20] = "00:00:00:00:00:00";
+		/* retrieve source mac address. */
+		if (source_hwaddr(targ->g->ifname, mybuf) == -1) {
+			D("Unable to retrieve source mac");
+			// continue, fail later
+		}
+		targ->g->src_mac.name = mybuf;
+	}
+
+	/* extract address ranges */
+	extract_ip_range(&targ->g->src_ip);
+	extract_ip_range(&targ->g->dst_ip);
+	extract_mac_range(&targ->g->src_mac);
+	extract_mac_range(&targ->g->dst_mac);
+
+	if (targ->g->src_ip.start != targ->g->src_ip.end ||
+			targ->g->src_ip.port0 != targ->g->src_ip.port1 ||
+			targ->g->dst_ip.start != targ->g->dst_ip.end ||
+			targ->g->dst_ip.port0 != targ->g->dst_ip.port1)
+		targ->g->options |= OPT_COPY;
+
+	if (targ->g->virt_header != 0 && targ->g->virt_header != VIRT_HDR_1
+			&& targ->g->virt_header != VIRT_HDR_2) {
+		D("bad virtio-net-header length");
+		return (NULL);
+	}
+
 	///
 
-	
-
+	ip = &pkt->ip;
 	/* prepare the headers */
 	ip->ip_v = IPVERSION;
 	ip->ip_hl = 5;
@@ -155,17 +148,17 @@ initialize_packet_icmp(struct targ *targ)
 	ip->ip_p = IPPROTO_ICMP;
 	ip->ip_dst.s_addr = htonl(targ->g->dst_ip.start);
 	ip->ip_src.s_addr = htonl(targ->g->src_ip.start);
-	ip->ip_sum = wrapsum(checksum(ip, sizeof(*ip), 0));
 
 	icmp = &pkt->icmp;
-
+	/* prepare the headers */
 	icmp->type = ICMP_ECHO;
 	icmp->code = 0;
 	icmp->un.echo.id = rand();
 	icmp->un.echo.sequence = rand();
 	icmp->checksum = 0;
-	icmp->checksum = checksumIcmp(icmp, paylen);
 
+	/* compute checksum */
+	checksumIcmp(pkt);
 
 	eh = &pkt->eh;
 	bcopy(&targ->g->src_mac.start, eh->ether_shost, 6);
