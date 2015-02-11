@@ -1,13 +1,11 @@
 #include "everything.h"
 
-static int verbose = 0;
-
 /*
  * extract the extremes from a range of ipv4 addresses.
  * addr_lo[-addr_hi][:port_lo[-port_hi]]
  */
 void
-extract_ip_range(struct ip_range *r)
+extract_ip_range(struct ip_range *r, int verbose)
 {
 	char *ap, *pp;
 	struct in_addr a;
@@ -66,7 +64,7 @@ extract_ip_range(struct ip_range *r)
 }
 
 void
-extract_mac_range(struct mac_range *r)
+extract_mac_range(struct mac_range *r, int verbose)
 {
 	if (verbose)
 		D("extract MAC range from %s", r->name);
@@ -94,7 +92,7 @@ extract_mac_range(struct mac_range *r)
  * into the user-supplied buffer. return 0 if ok, -1 on error.
  */
 int
-source_hwaddr(const char *ifname, char *buf)
+source_hwaddr(const char *ifname, char *buf, int verbose)
 {
 	struct ifaddrs *ifaphead, *ifap;
 	int l = sizeof(ifap->ifa_name);

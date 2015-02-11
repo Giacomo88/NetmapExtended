@@ -56,7 +56,7 @@ checksumIcmp(struct pkt_icmp *pkt)
  * initialize one packet and prepare for the next one.
  * The copy could be done better instead of repeating it each time.
  */
-void *
+int
 initialize_packet_icmp(struct targ *targ)
 {
 	const char*default_payload="netmap pkt-gen DIRECT payload\n"
@@ -65,50 +65,57 @@ initialize_packet_icmp(struct targ *targ)
 	const char*indirect_payload="netmap pkt-gen indirect payload\n"
 			"http://info.iet.unipi.it/~luigi/netmap/ ";
 
-	struct pkt_icmp *pkt = &targ->pkt_icmp;
-	struct ether_header *eh;
-	struct ip *ip;
-	struct icmphdr* icmp;
+	int i, j, l0;
 
-	uint16_t paylen = targ->g->pkt_size - sizeof(*eh) - sizeof(struct ip);
-	const char *payload = targ->g->options & OPT_INDIRECT ?
-			indirect_payload : default_payload;
-	int i, j, l0 = strlen(payload);
+	/* default value */
+	/* ip addresses can also be a range x.x.x.x-x.x.x.y */
+	targ->g->src_ip.name = "10.0.0.1";
+	targ->g->dst_ip.name = "10.1.0.1";
+	targ->g->dst_mac.name = "ff:ff:ff:ff:ff:ff";
+	targ->g->src_mac.name = NULL;
+	targ->g->pkt_size = 60;
+	targ->g->virt_header = 0;
 
-	/* create a nice NUL-terminated string */
-	for (i = 0; i < paylen; i += l0) {
-		if (l0 > paylen - i)
-			l0 = paylen - i; // last round
-		bcopy(payload, pkt->body + i, l0);
-	}
-	pkt->body[i-1] = '\0';
+	/* if user enter some --data param */
+	if(targ->g->gen_param != NULL) {
 
-	///
+		/* parameters to parse */
+		struct long_opt_parameter data_param[] = {
+				{ "dst_ip", &targ->g->dst_ip.name, "char" },
+				{ "src_ip", &targ->g->src_ip.name, "char" },
+				{ "dst-mac", &targ->g->dst_mac.name, "char" },
+				{ "src-mac", &targ->g->src_mac.name, "char" },
+				{ "pkt-size", &targ->g->pkt_size, "int" },
+				{ "virt_header", &targ->g->virt_header, "int" },
+				{ NULL, NULL, NULL }
+		};
 
-	struct long_opt_parameter data_param[] = {
-			{ "dst_ip", &targ->g->dst_ip.name },
-			{ "src_ip", &targ->g->src_ip.name },
-			{ "dst-mac", &targ->g->dst_mac.name },
-			{ "src-mac", &targ->g->src_mac.name },
-			{ NULL, NULL }
-	};
-
-	for(i=0; targ->g->gen_param[i] != NULL; i++) {
-
-		for(j=0; data_param[j].name != NULL; j++) {
-			if(strncmp(data_param[i].name, targ->g->gen_param[j], strlen(data_param[i].name)) == 0){
-				*((uintptr_t*)(data_param[i].value_loc)) = (uintptr_t) &(targ->g->gen_param[j][strlen(data_param[i].name)+1]);
-				break;
+		/* parse gen_param array */
+		for(i=0; targ->g->gen_param[i] != NULL; i++) {
+			for(j=0; data_param[j].name != NULL; j++) {
+				if(strncmp(data_param[j].name, targ->g->gen_param[i], strlen(data_param[j].name)) == 0){
+					if(strcmp(data_param[j].type, "char")==0)
+						*((uintptr_t*)(data_param[j].value_loc)) = (uintptr_t) &(targ->g->gen_param[i][strlen(data_param[j].name)+1]);
+					else /*int param use atoi*/
+						*((int*)(data_param[j].value_loc)) =  (atoi(&targ->g->gen_param[i][strlen(data_param[j].name)+1]));
+					break;
+				}
 			}
 		}
+
+		/* free array gen param */
+		free(targ->g->gen_param);
 	}
-	free(targ->g->gen_param);
-	///
+
+	if (targ->g->pkt_size < 16 || targ->g->pkt_size > MAX_PKTSIZE) {
+		D("bad pktsize %d [16..%d]\n", targ->g->pkt_size, MAX_PKTSIZE);
+		return -1;
+	}
 
 	if (targ->g->src_mac.name == NULL) {
 		static char mybuf[20] = "00:00:00:00:00:00";
 		/* retrieve source mac address. */
-		if (source_hwaddr(targ->g->ifname, mybuf) == -1) {
+		if (source_hwaddr(targ->g->ifname, mybuf, targ->g->verbose) == -1) {
 			D("Unable to retrieve source mac");
 			// continue, fail later
 		}
@@ -116,10 +123,10 @@ initialize_packet_icmp(struct targ *targ)
 	}
 
 	/* extract address ranges */
-	extract_ip_range(&targ->g->src_ip);
-	extract_ip_range(&targ->g->dst_ip);
-	extract_mac_range(&targ->g->src_mac);
-	extract_mac_range(&targ->g->dst_mac);
+	extract_ip_range(&targ->g->src_ip, targ->g->verbose);
+	extract_ip_range(&targ->g->dst_ip, targ->g->verbose);
+	extract_mac_range(&targ->g->src_mac, targ->g->verbose);
+	extract_mac_range(&targ->g->dst_mac, targ->g->verbose);
 
 	if (targ->g->src_ip.start != targ->g->src_ip.end ||
 			targ->g->src_ip.port0 != targ->g->src_ip.port1 ||
@@ -130,13 +137,29 @@ initialize_packet_icmp(struct targ *targ)
 	if (targ->g->virt_header != 0 && targ->g->virt_header != VIRT_HDR_1
 			&& targ->g->virt_header != VIRT_HDR_2) {
 		D("bad virtio-net-header length");
-		return (NULL);
+		return -1;
 	}
 
-	///
+	/* initialize the packet */
+	struct pkt_icmp *pkt = &targ->pkt_icmp;
+	struct ether_header *eh;
+	struct ip *ip;
+	struct icmphdr *icmp;
+	uint16_t paylen = targ->g->pkt_size - sizeof(*eh) - sizeof(struct ip);
+	const char *payload = targ->g->options & OPT_INDIRECT ?
+			indirect_payload : default_payload;
+	l0 = strlen(payload);
 
+	/* create a nice NUL-terminated string */
+	for (i = 0; i < paylen; i += l0) {
+		if (l0 > paylen - i)
+			l0 = paylen - i; // last round
+		bcopy(payload, pkt->body + i, l0);
+	}
+	pkt->body[i-1] = '\0';
+
+	/* prepare the header ip */
 	ip = &pkt->ip;
-	/* prepare the headers */
 	ip->ip_v = IPVERSION;
 	ip->ip_hl = 5;
 	ip->ip_id = 0;
@@ -149,8 +172,8 @@ initialize_packet_icmp(struct targ *targ)
 	ip->ip_dst.s_addr = htonl(targ->g->dst_ip.start);
 	ip->ip_src.s_addr = htonl(targ->g->src_ip.start);
 
+	/* prepare the header icmp */
 	icmp = &pkt->icmp;
-	/* prepare the headers */
 	icmp->type = ICMP_ECHO;
 	icmp->code = 0;
 	icmp->un.echo.id = rand();
@@ -167,5 +190,5 @@ initialize_packet_icmp(struct targ *targ)
 
 	bzero(&pkt->vh, sizeof(pkt->vh));
 	// dump_payload((void *)pkt, targ->g->pkt_size, NULL, 0);
-	return (NULL);
+	return 0;
 }

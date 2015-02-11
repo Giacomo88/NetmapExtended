@@ -47,92 +47,6 @@
 #include "udp_packet.h"
 #include "icmp_packet.h"
 
-/*
- * extract the extremes from a range of ipv4 addresses.
- * addr_lo[-addr_hi][:port_lo[-port_hi]]
- */
-/*static void
-extract_ip_range(struct ip_range *r)
-{
-	char *ap, *pp;
-	struct in_addr a;
-
-	if (verbose)
-		D("extract IP range from %s", r->name);
-	r->port0 = r->port1 = 0;
-	r->start = r->end = 0;
-
-	// the first - splits start/end of range 
-	ap = index(r->name, '-');	// do we have ports ?
-	if (ap) {
-		*ap++ = '\0';
-	}
-	// grab the initial values (mandatory)
-	pp = index(r->name, ':');
-	if (pp) {
-		*pp++ = '\0';
-		r->port0 = r->port1 = strtol(pp, NULL, 0);
-	};
-	inet_aton(r->name, &a);
-	r->start = r->end = ntohl(a.s_addr);
-	if (ap) {
-		pp = index(ap, ':');
-		if (pp) {
-			*pp++ = '\0';
-			if (*pp)
-				r->port1 = strtol(pp, NULL, 0);
-		}
-		if (*ap) {
-			inet_aton(ap, &a);
-			r->end = ntohl(a.s_addr);
-		}
-	}
-	if (r->port0 > r->port1) {
-		uint16_t tmp = r->port0;
-		r->port0 = r->port1;
-		r->port1 = tmp;
-	}
-	if (r->start > r->end) {
-		uint32_t tmp = r->start;
-		r->start = r->end;
-		r->end = tmp;
-	}
-	{
-		struct in_addr a;
-		char buf1[16]; // one ip address
-
-		a.s_addr = htonl(r->end);
-		strncpy(buf1, inet_ntoa(a), sizeof(buf1));
-		a.s_addr = htonl(r->start);
-		if (1)
-			D("range is %s:%d to %s:%d",
-					inet_ntoa(a), r->port0, buf1, r->port1);
-	}
-}
-
-static void
-extract_mac_range(struct mac_range *r)
-{
-	if (verbose)
-		D("extract MAC range from %s", r->name);
-	bcopy(ether_aton(r->name), &r->start, 6);
-	bcopy(ether_aton(r->name), &r->end, 6);
-#if 0
-	bcopy(targ->src_mac, eh->ether_shost, 6);
-	p = index(targ->g->src_mac, '-');
-	if (p)
-		targ->src_mac_range = atoi(p+1);
-
-	bcopy(ether_aton(targ->g->dst_mac), targ->dst_mac, 6);
-	bcopy(targ->dst_mac, eh->ether_dhost, 6);
-	p = index(targ->g->dst_mac, '-');
-	if (p)
-		targ->dst_mac_range = atoi(p+1);
-#endif
-	if (verbose)
-		D("%s starts at %s", r->name, ether_ntoa(&r->start));
-}
-*/
 struct targ *targs;
 static int global_nthreads;
 
@@ -217,43 +131,6 @@ parse_nmr_config(const char* conf, struct nmreq *nmr)
 					NM_OPEN_RING_CFG : 0;
 }
 
-
-/*
- * locate the src mac address for our interface, put it
- * into the user-supplied buffer. return 0 if ok, -1 on error.
- */
-/*static int
-source_hwaddr(const char *ifname, char *buf)
-{
-	struct ifaddrs *ifaphead, *ifap;
-	int l = sizeof(ifap->ifa_name);
-
-	if (getifaddrs(&ifaphead) != 0) {
-		D("getifaddrs %s failed", ifname);
-		return (-1);
-	}
-
-	for (ifap = ifaphead; ifap; ifap = ifap->ifa_next) {
-		struct sockaddr_dl *sdl =
-				(struct sockaddr_dl *)ifap->ifa_addr;
-		uint8_t *mac;
-
-		if (!sdl || sdl->sdl_family != AF_LINK)
-			continue;
-		if (strncmp(ifap->ifa_name, ifname, l) != 0)
-			continue;
-		mac = (uint8_t *)LLADDR(sdl);
-		sprintf(buf, "%02x:%02x:%02x:%02x:%02x:%02x",
-				mac[0], mac[1], mac[2],
-				mac[3], mac[4], mac[5]);
-		if (verbose)
-			D("source hwaddr %s", buf);
-		break;
-	}
-	freeifaddrs(ifaphead);
-	return ifap ? 0 : 1;
-}*/
-
 static void
 usage(void)
 {
@@ -262,17 +139,15 @@ usage(void)
 			"Usage:\n"
 			"%s arguments\n"
 			"\t--data param_name=VALUE   	parameters for packet generator:\n"
-			"\t\tdst_ip src_ip dst-mac src-mac pcap-file proto (udp/icmp/all)\n"
-			"\t--arg param_name=VALUE   	functions arguments:\n"
-			"\t\tmode (read/gen) blocking (yes/no)\n"
+			"\t\tdst_ip src_ip dst-mac src-mac pcap-file pkt-size virt_header\n"
 			"\t-g pkts_generator		(can be udp icmp pcap)\n"
 			"\t-i interface			interface name\n"
 			"\t-f function			tx rx ping pong\n"
 			"\t-n count			number of iterations (can be 0)\n"
 			"\t-t pkts_to_send		also forces tx mode\n"
 			"\t-r pkts_to_receive		also forces rx mode\n"
-			"\t-l pkt_size			in bytes excluding CRC\n"
-			/*"\t-d dst_ip[:port[-dst_ip:port]]   single or range\n"
+			/*"\t-l pkt_size			in bytes excluding CRC\n"
+			"\t-d dst_ip[:port[-dst_ip:port]]   single or range\n"
 		"\t-s src_ip[:port[-src_ip:port]]   single or range\n"
 		"\t-D dst-mac\n"
 		"\t-S src-mac\n" */
@@ -382,9 +257,6 @@ static struct option long_options[] = {
 		{0, 0, 0, 0 }
 };
 
-
-
-
 int
 main(int arc, char **argv)
 {
@@ -397,7 +269,6 @@ main(int arc, char **argv)
 	int devqueues = 1;	/* how many device queues */
 	int opt_index=0;	/* index of long options (getopt_long) */
 	int index=0;
-	//int incorrect_param=1;	/* long option parameter validity: 1=not correct, 0=correct */
 
 	bzero(&g, sizeof(g));
 	g.verbose = 0;
@@ -405,12 +276,6 @@ main(int arc, char **argv)
 	g.td_body = receiver_body;
 	g.report_interval = 1000;	/* report interval */
 	g.affinity = -1;
-	/* ip addresses can also be a range x.x.x.x-x.x.x.y */
-	g.src_ip.name = "10.0.0.1";
-	g.dst_ip.name = "10.1.0.1";
-	g.dst_mac.name = "ff:ff:ff:ff:ff:ff";
-	g.src_mac.name = NULL;
-	g.pkt_size = 60;
 	g.burst = 512;		// default
 	g.nthreads = 1;
 	g.cpus = 1;
@@ -418,29 +283,9 @@ main(int arc, char **argv)
 	g.tx_rate = 0;
 	g.frags = 1;
 	g.nmr_config = "";
-	g.virt_header = 0;
 	g.mode = "udp";
 	int dparam_counter = 0;
-/*	g.proto = "udp";
-	g.blocking = "yes";*/
-
-	//parameters of option --data
-	/*struct long_opt_parameter data_param[] = {
-			{ "dst_ip", &g.dst_ip.name },
-			{ "src_ip", &g.src_ip.name },
-			{ "dst-mac", &g.dst_mac.name },
-			{ "src-mac", &g.src_mac.name },
-			{ "pcap-file", &g.pcap_file },
-			{ NULL, NULL } 
-	};*/
-
-
-	//parameters of option --arg
-	/*	struct long_opt_parameter arg_param[] = {
-			{ "mode" , &g.mode },
-			{ "blocking" , &g.blocking },
-			{ NULL, NULL}
-	};*/
+	g.gen_param = NULL;
 
 	while ( (ch = getopt_long(arc, argv,
 			"a:f:F:n:i:Il:b:c:o:p:T:w:WvR:XC:H:e:m:g:", long_options, &opt_index)) != -1) {
@@ -454,29 +299,28 @@ main(int arc, char **argv)
 
 		case 0: // LONG_OPTIONS CASE
 
-			if(strcmp(long_options[opt_index].name, "data") == 0) 
-						{	
-							//count the number of parameters for --data
-							for(index = optind-1; index < arc && argv[index][0] != '-'; index++)
-								dparam_counter++;
-							
-							//allocate memory for g.data structure (array of string)
-							g.gen_param = (char**)malloc(sizeof(char) * dparam_counter);
-							int i=0;
-							
-							//insert every paramenter in a position of g.data
-							for(index = optind-1; index < arc && argv[index][0] != '-'; index++)
-							{
-								g.gen_param[i] = argv[index];
-								printf("data[%d] = %s\n", i, g.gen_param[i]);
-								i++;
-							}
-						}
+			if(strcmp(long_options[opt_index].name, "data") == 0) {
+				/* count the number of parameters for --data */
+				for(index = optind-1; index < arc && argv[index][0] != '-'; index++)
+					dparam_counter++;
 
-						break;
+				/* allocate memory for g.data structure (array of string) */
+				g.gen_param = (char**)malloc(sizeof(char*) * (dparam_counter + 1));
+				int i=0;
+
+				/* insert every paramenter in a position of g.data */
+				for(index = optind-1; index < arc && argv[index][0] != '-'; index++) {
+					g.gen_param[i] = argv[index];
+					i++;
+				}
+
+				/* last value*/
+				g.gen_param[i] = NULL;
+			}
+			break;
+
 		case 'g':
 			g.mode = optarg;
-			printf("mode: %s",optarg);
 			break;
 
 		case 'n':
@@ -545,9 +389,9 @@ main(int arc, char **argv)
 			g.options |= OPT_INDIRECT;	/* XXX use indirect buffer */
 			break;
 
-		case 'l':	/* pkt_size */
+			/*	case 'l':	//pkt_size
 			g.pkt_size = atoi(optarg);
-			break;
+			break;*/
 
 			/*case 'd':
 			g.dst_ip.name = optarg;
@@ -572,9 +416,11 @@ main(int arc, char **argv)
 		case 'b':	/* burst */
 			g.burst = atoi(optarg);
 			break;
+
 		case 'c':
 			g.cpus = atoi(optarg);
 			break;
+
 		case 'p':
 			g.nthreads = atoi(optarg);
 			break;
@@ -589,21 +435,25 @@ main(int arc, char **argv)
 		case 'v':
 			g.verbose++;
 			break;
+
 		case 'R':
 			g.tx_rate = atoi(optarg);
 			break;
+
 		case 'X':
 			g.options |= OPT_DUMP;
 			break;
 		case 'C':
 			g.nmr_config = strdup(optarg);
 			break;
-		case 'H':
+
+			/*case 'H':
 			g.virt_header = atoi(optarg);
-			break;
+			break;*/
 		case 'e': /* extra bufs */
 			g.extra_bufs = atoi(optarg);
 			break;
+
 		case 'm':
 			if (strcmp(optarg, "tx") == 0) {
 				g.options |= OPT_MONITOR_TX;
@@ -616,14 +466,7 @@ main(int arc, char **argv)
 		}
 	}
 
-	/*
-	printf("g.src_ip: %s\n", g.src_ip.name);
-	printf("g.dst_ip: %s\n", g.dst_ip.name);
-	printf("g.src-mac: %s\n", g.src_mac.name);
-	printf("g.dst-mac: %s\n", g.dst_mac.name);
-	 */
-
-
+	/* check interface name */
 	if (g.ifname == NULL) {
 		D("missing ifname");
 		usage();
@@ -637,55 +480,6 @@ main(int arc, char **argv)
 	if (g.cpus == 0)
 		g.cpus = i;
 
-	if (g.pkt_size < 16 || g.pkt_size > MAX_PKTSIZE) {
-		D("bad pktsize %d [16..%d]\n", g.pkt_size, MAX_PKTSIZE);
-		usage();
-	}
-
-	/*if (g.src_mac.name == NULL) {
-		static char mybuf[20] = "00:00:00:00:00:00";
-		// retrieve source mac address.
-		if (source_hwaddr(g.ifname, mybuf) == -1) {
-			D("Unable to retrieve source mac");
-			// continue, fail later
-		}
-		g.src_mac.name = mybuf;
-	}*/
-	/* extract address ranges */
-	/*extract_ip_range(&g.src_ip);
-	extract_ip_range(&g.dst_ip);
-	extract_mac_range(&g.src_mac);
-	extract_mac_range(&g.dst_mac);*/
-
-	/*if(strcmp(g.mode,GEN)==0 && strcmp(g.proto, "all")==0){
-		D("Please, select only one protocol for gen modality");
-		usage();
-	}
-	else if(strcmp(g.mode,R_PCAP)==0 && g.pcap_file==NULL) {
-		D("Please, input a file for using read modality");
-		usage();
-	}
-
-	if(strcmp(g.blocking,"no")!=0 && strcmp(g.blocking,"yes")!=0) {
-		D("Invalid blocking argument, insert yes or no");
-		usage();
-	}*/
-
-
-/*
-	if (g.src_ip.start != g.src_ip.end ||
-			g.src_ip.port0 != g.src_ip.port1 ||
-			g.dst_ip.start != g.dst_ip.end ||
-			g.dst_ip.port0 != g.dst_ip.port1)
-		g.options |= OPT_COPY;
-
-	if (g.virt_header != 0 && g.virt_header != VIRT_HDR_1
-			&& g.virt_header != VIRT_HDR_2) {
-		D("bad virtio-net-header length");
-		usage();
-	}
-*/
-	
 	if (g.dev_type == DEV_TAP) {
 		D("want to use tap %s", g.ifname);
 		g.main_fd = tap_alloc(g.ifname);
@@ -772,11 +566,6 @@ main(int arc, char **argv)
 						devqueues,
 						g.nthreads,
 						g.cpus);
-		if (g.td_body == sender_body) {
-			fprintf(stdout, "%s -> %s (%s -> %s)\n",
-					g.src_ip.name, g.dst_ip.name,
-					g.src_mac.name, g.dst_mac.name);
-		}
 
 		out:
 		/* Exit if something went wrong. */
@@ -785,7 +574,6 @@ main(int arc, char **argv)
 			usage();
 		}
 	}
-
 
 	if (g.options) {
 		D("--- SPECIAL OPTIONS:%s%s%s%s%s\n",
@@ -813,9 +601,7 @@ main(int arc, char **argv)
 		g.tx_period.tv_sec = g.tx_period.tv_nsec / 1000000000;
 		g.tx_period.tv_nsec = g.tx_period.tv_nsec % 1000000000;
 	}
-	if (g.td_body == sender_body)
-		D("Sending %d packets every  %ld.%09ld s",
-				g.burst, g.tx_period.tv_sec, g.tx_period.tv_nsec);
+
 	/* Wait for PHY reset. */
 	D("Wait %d secs for phy reset", wait_link);
 	sleep(wait_link);

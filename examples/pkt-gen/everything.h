@@ -223,4 +223,5 @@ struct targ {
 struct long_opt_parameter {
 	char *name;		//parameter name
 	void *value_loc;	//where to store the value
+	char *type;		//type of parameter
 };

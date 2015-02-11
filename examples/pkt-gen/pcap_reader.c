@@ -1,32 +1,48 @@
 #include "everything.h"
 
 static char *filename;
-static pcap_t *head=NULL;
+static pcap_t *head = NULL;
+static u_char *buffer = NULL;
 
 int 
 initialize_reader(struct targ *targ)
 {
-	int i, j;
-	
-	struct long_opt_parameter data_param[] = {
-				{ "pcap-file", &targ->g->pcap_file },
-				{ NULL, NULL } 
+
+	/* default value */
+	targ->g->pcap_file = NULL;
+
+	/* if user enter some --data param */
+	if(targ->g->gen_param != NULL) {
+
+		int i, j;
+
+		/* parameters to parse */
+		struct long_opt_parameter data_param[] = {
+				{ "pcap-file", &targ->g->pcap_file, "char" },
+				{ NULL, NULL, NULL }
 		};
-	
-	for(i=0; targ->g->gen_param[i] != NULL; i++) {
-		
-		for(j=0; data_param[j].name != NULL; j++) {
-			if(strncmp(data_param[i].name, targ->g->gen_param[j], strlen(data_param[i].name)) == 0){
-				*((uintptr_t*)(data_param[i].value_loc)) = (uintptr_t) &(targ->g->gen_param[j][strlen(data_param[i].name)+1]);
-				break;
+
+		/* parse gen_param array */
+		for(i=0; targ->g->gen_param[i] != NULL; i++) {
+			for(j=0; data_param[j].name != NULL; j++) {
+				if(strncmp(data_param[j].name, targ->g->gen_param[i], strlen(data_param[j].name)) == 0){
+					*((uintptr_t*)(data_param[j].value_loc)) = (uintptr_t) &(targ->g->gen_param[i][strlen(data_param[j].name)+1]);
+					break;
+				}
 			}
 		}
+
+		/* free array gen param */
+		free(targ->g->gen_param);
 	}
 	
-	free(targ->g->gen_param);
-	
-	filename = targ->g->pcap_file;
-	char errbuf[PCAP_ERRBUF_SIZE]; //not sure what to do with this, oh well
+	if((filename = targ->g->pcap_file) == NULL)	{
+		D("Please insert a file pcap");
+		return -1;
+	}
+	char errbuf[PCAP_ERRBUF_SIZE];
+
+	/* open pcap file*/
 	head = pcap_open_offline(filename, errbuf);   //call pcap library function
 
 	if (head == NULL) {
@@ -39,6 +55,7 @@ initialize_reader(struct targ *targ)
 void 
 close_reader()
 {
+	free(buffer);
 	pcap_close(head);  //close the pcap file
 }
 
@@ -50,7 +67,7 @@ pcap_reader(void **frame, struct glob_arg *g)
 	int size_vh = sizeof(struct virt_header);
 	u_char *pad = (u_char*)malloc(size_vh);
 	memset(pad,0, size_vh);
-	u_char *buffer=NULL;
+
 
 	if(head==NULL) {
 		pcap_close(head);

@@ -84,13 +84,15 @@ start_threads(struct glob_arg *g, struct targ *targs)
 			idx++;
 		}
 
-		void (*ptrf) ( struct targ *targs );
+		int (*ptrf) ( struct targ *targs );
 		ptrf = pkt_map[idx].f_init;
-		ptrf(t);
+		if(	ptrf(t) < 0 ) D("initialize failure");
+		else {
 
-		if (pthread_create(&t->thread, NULL, g->td_body, t) == -1) {
-			D("Unable to create thread %d: %s", i, strerror(errno));
-			t->used = 0;
+			if (pthread_create(&t->thread, NULL, g->td_body, t) == -1) {
+				D("Unable to create thread %d: %s", i, strerror(errno));
+				t->used = 0;
+			}
 		}
 	}
 }

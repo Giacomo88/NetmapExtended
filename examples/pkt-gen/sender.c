@@ -2,11 +2,7 @@
 #include "pcap_reader.h"
 #include "udp_packet.h"
 
-
-int virt_header;
 uint8_t proto_idx;
-char *filename=NULL;
-u_char *buffer=NULL;
 
 struct protocol {
 	char *key;
@@ -310,7 +306,13 @@ sender_body(void *data)
 
 	void *frame=NULL;
 	int size=0;
-	//u_char *buffer=NULL;
+
+	/* print some information */
+	fprintf(stdout, "%s -> %s (%s -> %s)\n",
+			targ->g->src_ip.name, targ->g->dst_ip.name,
+			targ->g->src_mac.name, targ->g->dst_mac.name);
+	D("Sending %d packets every  %ld.%09ld s",
+			targ->g->burst, targ->g->tx_period.tv_sec, targ->g->tx_period.tv_nsec);
 
 	struct protocol pkt_map[] = {
 			{ "udp", &targ->pkt_udp, update_addresses_udp },
@@ -318,8 +320,6 @@ sender_body(void *data)
 			{ "pcap", &frame, pcap_reader },
 			{ NULL, NULL, NULL }
 	};
-
-	virt_header = targ->g->virt_header;
 
 	proto_idx = 0;
 	while( pkt_map[proto_idx].key != NULL ) {
@@ -335,16 +335,6 @@ sender_body(void *data)
 		frame += sizeof(struct virt_header) - targ->g->virt_header;
 		size = targ->g->pkt_size + targ->g->virt_header;
 	} else { // mode read
-
-		//filename = targ->g->pcap_file;
-		/*char errbuf[PCAP_ERRBUF_SIZE]; //not sure what to do with this, oh well
-		head = pcap_open_offline(filename, errbuf);   //call pcap library function
-
-		if (head == NULL) {
-			D("Couldn't open pcap file %s: %s\n",filename , errbuf);
-			goto quit;
-		}*/
-		//if( initialize_reader(targ) < 0 ) goto quit;
 
 		pcap_reader(&frame, targ->g);
 		size = targ->g->pkt_size;
@@ -476,10 +466,7 @@ sender_body(void *data)
 	/* reset the ``used`` flag. */
 	targ->used = 0;
 
-	if(strcmp(targ->g->mode,"pcpa")==0)
-	{
-		free(buffer);
-		//pcap_close(head);  //close the pcap file
+	if(strcmp(targ->g->mode,"pcap")==0) {
 		close_reader();
 	}
 
