@@ -263,15 +263,15 @@ static struct option long_options[] = {
 int
 main(int arc, char **argv)
 {
-	int i=0;
-
 	struct glob_arg g;
 
 	int ch;
 	int wait_link = 2;
 	int devqueues = 1;	/* how many device queues */
 	int opt_index=0;	/* index of long options (getopt_long) */
-	int index=0;
+	int index=0, i=0;
+	int correct_gen = 0; 
+	
 
 	bzero(&g, sizeof(g));
 	g.verbose = 0;
@@ -481,6 +481,20 @@ main(int arc, char **argv)
 		}
 	}
 
+	/* check generator name */
+	correct_gen = 0;
+	for(i=0; p_map[i].key != NULL; i++) {
+		if(strcmp(p_map[i].key, g.mode) == 0) {
+			correct_gen = 1;
+			break;
+		}
+	}
+	if(correct_gen == 0)
+	{
+		D("generator %s not exists", g.mode);
+		usage();
+	}
+	
 	/* check interface name */
 	if (g.ifname == NULL) {
 		D("missing ifname");
