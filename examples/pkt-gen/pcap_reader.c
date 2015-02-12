@@ -4,54 +4,6 @@ static char *filename;
 static pcap_t *head = NULL;
 static u_char *buffer = NULL;
 
-int 
-initialize_reader(struct targ *targ)
-{
-
-	/* default value */
-	targ->g->pcap_file = NULL;
-
-	/* if user enter some --data param */
-	if(targ->g->gen_param != NULL) {
-
-		int i, j;
-
-		/* parameters to parse */
-		struct long_opt_parameter data_param[] = {
-				{ "pcap-file", &targ->g->pcap_file, "char" },
-				{ NULL, NULL, NULL }
-		};
-
-		/* parse gen_param array */
-		for(i=0; targ->g->gen_param[i] != NULL; i++) {
-			for(j=0; data_param[j].name != NULL; j++) {
-				if(strncmp(data_param[j].name, targ->g->gen_param[i], strlen(data_param[j].name)) == 0){
-					*((uintptr_t*)(data_param[j].value_loc)) = (uintptr_t) &(targ->g->gen_param[i][strlen(data_param[j].name)+1]);
-					break;
-				}
-			}
-		}
-
-		/* free array gen param */
-		free(targ->g->gen_param);
-	}
-	
-	if((filename = targ->g->pcap_file) == NULL)	{
-		D("Please insert a file pcap");
-		return -1;
-	}
-	char errbuf[PCAP_ERRBUF_SIZE];
-
-	/* open pcap file*/
-	head = pcap_open_offline(filename, errbuf);   //call pcap library function
-
-	if (head == NULL) {
-		D("Couldn't open pcap file %s: %s\n",filename , errbuf);
-		return -1;
-	} else
-		return 0;
-}
-
 void 
 close_reader()
 {
@@ -122,4 +74,55 @@ pcap_reader(void **frame, struct glob_arg *g)
 	*frame = buffer;
 	*frame += sizeof(struct virt_header) - g->virt_header;
 	g->pkt_size += g->virt_header;
+}
+
+int
+initialize_reader(struct targ *targ)
+{
+
+	/* default value */
+	targ->g->pcap_file = NULL;
+
+	/* if user enter some --data param */
+	if(targ->g->gen_param != NULL) {
+
+		int i, j;
+
+		/* parameters to parse */
+		struct long_opt_parameter data_param[] = {
+				{ "pcap-file", &targ->g->pcap_file, "char" },
+				{ NULL, NULL, NULL }
+		};
+
+		/* parse gen_param array */
+		for(i=0; targ->g->gen_param[i] != NULL; i++) {
+			for(j=0; data_param[j].name != NULL; j++) {
+				if(strncmp(data_param[j].name, targ->g->gen_param[i], strlen(data_param[j].name)) == 0){
+					*((uintptr_t*)(data_param[j].value_loc)) = (uintptr_t) &(targ->g->gen_param[i][strlen(data_param[j].name)+1]);
+					break;
+				}
+			}
+		}
+
+		/* free array gen param */
+		free(targ->g->gen_param);
+	}
+
+	if((filename = targ->g->pcap_file) == NULL)	{
+		D("Please insert a file pcap");
+		return -1;
+	}
+	char errbuf[PCAP_ERRBUF_SIZE];
+
+	/* open pcap file*/
+	head = pcap_open_offline(filename, errbuf);   //call pcap library function
+
+	if (head == NULL) {
+		D("Couldn't open pcap file %s: %s\n",filename , errbuf);
+		return -1;
+	} else {
+		/* read first packet in the file */
+		pcap_reader(&targ->packet, targ->g);
+		return 0;
+	}
 }

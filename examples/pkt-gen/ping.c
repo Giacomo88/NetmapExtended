@@ -5,7 +5,6 @@
 struct protocol {
 	char *key;
 	void *pkt_ptr;
-	void *upd_check;
 };
 
 /*
@@ -26,24 +25,8 @@ pinger_body(void *data)
 	struct timespec ts, now, last_print;
 	uint32_t count = 0, min = 1000000000, av = 0;
 
-	struct protocol pkt_map[] = {
-			{ "udp", &targ->pkt_udp, checksumUdp },
-			{ "icmp", &targ->pkt_icmp, checksumIcmp },
-			{ NULL, NULL, NULL }
-	};
-
-	int idx = 0;
-	while( pkt_map[idx].key != NULL ) {
-		if( strcmp(pkt_map[idx].key, targ->g->mode) == 0 ) break;
-		idx++;
-	}
-
-	frame = pkt_map[idx].pkt_ptr;
-	frame += sizeof(struct virt_header) - targ->g->virt_header;
-	size = targ->g->pkt_size + targ->g->virt_header;
-
-	void (*ptrf) ( void *pkt );
-	ptrf = pkt_map[idx].upd_check;
+	frame = targ->packet;
+	size = targ->g->pkt_size;
 
 	if (targ->g->nthreads > 1) {
 		D("can only ping with 1 thread");
@@ -65,18 +48,12 @@ pinger_body(void *data)
 				D("-- ouch, cannot send");
 			} else {
 				struct tstamp *tp;
-
+				nm_pkt_copy(frame, p, size);
 				clock_gettime(CLOCK_REALTIME_PRECISE, &ts);
 				bcopy(&sent, p+42, sizeof(sent));
 				tp = (struct tstamp *)(p+46);
 				tp->sec = (uint32_t)ts.tv_sec;
 				tp->nsec = (uint32_t)ts.tv_nsec;
-
-				// recalculate checksum
-				ptrf(pkt_map[idx].pkt_ptr);
-
-				nm_pkt_copy(frame, p, size);
-
 				sent++;
 				ring->head = ring->cur = nm_ring_next(ring, ring->cur);
 			}

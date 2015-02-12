@@ -190,5 +190,11 @@ initialize_packet_icmp(struct targ *targ)
 
 	bzero(&pkt->vh, sizeof(pkt->vh));
 	// dump_payload((void *)pkt, targ->g->pkt_size, NULL, 0);
+	targ->packet = &targ->pkt_icmp;
+
+	/* previously inside in sender and ping */
+	targ->packet += sizeof(struct virt_header) - targ->g->virt_header;
+	targ->g->pkt_size += targ->g->virt_header;
+
 	return 0;
 }

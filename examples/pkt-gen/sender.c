@@ -1,13 +1,14 @@
 #include "everything.h"
 #include "pcap_reader.h"
 #include "udp_packet.h"
+#include "icmp_packet.h"
 
 uint8_t proto_idx;
 
 struct protocol {
 	char *key;
-	void *pkt_ptr;
 	void *f_update;
+	void *f_close;
 };
 
 static __inline struct timespec
@@ -112,11 +113,6 @@ dump_payload(char *p, int len, struct netmap_ring *ring, int cur)
 	}
 }
 
-/*
- * Fill a packet with some payload.
- * We create a UDP packet so the payload starts at
- *	14+20+8 = 42 bytes.
- */
 #ifdef __linux__
 #define uh_sport source
 #define uh_dport dest
@@ -173,6 +169,7 @@ update_addresses_udp(void **frame, struct glob_arg *g)
 		}
 		ip->ip_dst.s_addr = htonl(g->dst_ip.start);
 	} while (0);
+
 	// update checksum
 	checksumUdp(pkt);
 
@@ -188,7 +185,7 @@ update_addresses_icmp(void **frame, struct glob_arg *g)
 	/* Align the pointer to the structure pkt_icmp */
 	*frame = *frame - (sizeof(struct virt_header) - g->virt_header);
 
-	struct pkt_udp *pkt = (struct pkt_udp *)*frame;
+	struct pkt_icmp *pkt = (struct pkt_icmp *)*frame;
 
 	struct ip *ip = &pkt->ip;
 
@@ -207,8 +204,12 @@ update_addresses_icmp(void **frame, struct glob_arg *g)
 		}
 		ip->ip_dst.s_addr = htonl(g->dst_ip.start);
 	} while (0);
-	*frame = *frame + (sizeof(struct virt_header) - g->virt_header);
+
 	// update checksum
+	checksumIcmp(pkt);
+
+	*frame = *frame + (sizeof(struct virt_header) - g->virt_header);
+
 }
 
 
@@ -315,9 +316,9 @@ sender_body(void *data)
 			targ->g->burst, targ->g->tx_period.tv_sec, targ->g->tx_period.tv_nsec);
 
 	struct protocol pkt_map[] = {
-			{ "udp", &targ->pkt_udp, update_addresses_udp },
-			{ "icmp", &targ->pkt_icmp, update_addresses_icmp },
-			{ "pcap", &frame, pcap_reader },
+			{ "udp", update_addresses_udp, NULL },
+			{ "icmp", update_addresses_icmp, NULL },
+			{ "pcap", pcap_reader, close_reader },
 			{ NULL, NULL, NULL }
 	};
 
@@ -329,20 +330,11 @@ sender_body(void *data)
 		proto_idx++;
 	}
 
-	if(strcmp(targ->g->mode, "pcap")!=0) {
-
-		frame = pkt_map[proto_idx].pkt_ptr;
-		frame += sizeof(struct virt_header) - targ->g->virt_header;
-		size = targ->g->pkt_size + targ->g->virt_header;
-	} else { // mode read
-
-		pcap_reader(&frame, targ->g);
-		size = targ->g->pkt_size;
-	}
+	frame = targ->packet;
+	size = targ->g->pkt_size;
 
 	void (*ptrf) ( void *pkt, struct glob_arg *g);
 	ptrf = pkt_map[proto_idx].f_update;
-
 
 	D("start, fd %d main_fd %d", targ->fd, targ->g->main_fd);
 	if (setaffinity(targ->thread, targ->affinity))
@@ -466,8 +458,10 @@ sender_body(void *data)
 	/* reset the ``used`` flag. */
 	targ->used = 0;
 
-	if(strcmp(targ->g->mode,"pcap")==0) {
-		close_reader();
+	if(pkt_map[proto_idx].f_close != NULL) {
+		void (*f_close) ();
+		f_close = pkt_map[proto_idx].f_close;
+		f_close();
 	}
 
 	return (NULL);

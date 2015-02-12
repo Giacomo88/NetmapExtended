@@ -161,10 +161,8 @@ struct glob_arg {
 	int virt_header;	/* send also the virt_header */
 	int extra_bufs;		/* goes in nr_arg3 */
 
-	char *proto;
 	char *pcap_file;
 	char *mode;
-	char *blocking;
 };
 
 enum dev_type { DEV_NONE, DEV_NETMAP, DEV_PCAP, DEV_TAP };
@@ -186,6 +184,7 @@ struct targ {
 	pthread_t thread;
 	int affinity;
 
+	void *packet;
 	struct pkt_udp pkt_udp;
 	struct pkt_icmp pkt_icmp;
 };
