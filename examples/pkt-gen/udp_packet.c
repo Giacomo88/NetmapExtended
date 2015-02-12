@@ -1,6 +1,8 @@
 #include "everything.h"
 #include "extract.h"
 
+
+
 /* Compute the checksum of the given ip header. */
 static uint16_t
 checksum(const void *data, uint16_t len, uint32_t sum)
@@ -56,6 +58,64 @@ void checksumUdp(struct pkt_udp *pkt)
 					)
 			));
 }
+
+/*
+ * increment the addressed in the packet,
+ * starting from the least significant field.
+ *	DST_IP DST_PORT SRC_IP SRC_PORT
+ */
+void
+update_addresses_udp(void **frame, struct glob_arg *g)
+{
+	uint32_t a;
+	uint16_t p;
+
+	/* Align the pointer to the structure pkt_udp */
+	*frame = *frame - (sizeof(struct virt_header) - g->virt_header);
+
+	struct pkt_udp *pkt = (struct pkt_udp *)*frame;
+	struct ip *ip = &pkt->ip;
+	struct udphdr *udp = &pkt->udp;
+
+	do {
+		p = ntohs(udp->uh_sport);
+
+		if (p < g->src_ip.port1) { /* just inc, no wrap */
+			udp->uh_sport = htons(p + 1);
+			break;
+		}
+		udp->uh_sport = htons(g->src_ip.port0);
+
+		a = ntohl(ip->ip_src.s_addr);
+		if (a < g->src_ip.end) { /* just inc, no wrap */
+			ip->ip_src.s_addr = htonl(a + 1);
+			break;
+		}
+		ip->ip_src.s_addr = htonl(g->src_ip.start);
+
+		udp->uh_sport = htons(g->src_ip.port0);
+		p = ntohs(udp->uh_dport);
+		if (p < g->dst_ip.port1) { /* just inc, no wrap */
+			udp->uh_dport = htons(p + 1);
+			break;
+		}
+		udp->uh_dport = htons(g->dst_ip.port0);
+
+		a = ntohl(ip->ip_dst.s_addr);
+		if (a < g->dst_ip.end) { /* just inc, no wrap */
+			ip->ip_dst.s_addr = htonl(a + 1);
+			break;
+		}
+		ip->ip_dst.s_addr = htonl(g->dst_ip.start);
+	} while (0);
+
+	// update checksum
+	checksumUdp(pkt);
+
+	*frame = *frame + (sizeof(struct virt_header) - g->virt_header);
+
+}
+
 
 /*
  * initialize one packet and prepare for the next one.

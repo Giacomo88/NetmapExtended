@@ -52,6 +52,44 @@ checksumIcmp(struct pkt_icmp *pkt)
 	icmp->checksum = wrapsum(checksum(icmp, paylen , 0));
 }
 
+
+
+void
+update_addresses_icmp(void **frame, struct glob_arg *g)
+{
+	uint32_t a;
+
+	/* Align the pointer to the structure pkt_icmp */
+	*frame = *frame - (sizeof(struct virt_header) - g->virt_header);
+
+	struct pkt_icmp *pkt = (struct pkt_icmp *)*frame;
+
+	struct ip *ip = &pkt->ip;
+
+	do {
+		a = ntohl(ip->ip_src.s_addr);
+		if (a < g->src_ip.end) { // just inc, no wrap
+			ip->ip_src.s_addr = htonl(a + 1);
+			break;
+		}
+		ip->ip_src.s_addr = htonl(g->src_ip.start);
+
+		a = ntohl(ip->ip_dst.s_addr);
+		if (a < g->dst_ip.end) { // just inc, no wrap
+			ip->ip_dst.s_addr = htonl(a + 1);
+			break;
+		}
+		ip->ip_dst.s_addr = htonl(g->dst_ip.start);
+	} while (0);
+
+	// update checksum
+	checksumIcmp(pkt);
+
+	*frame = *frame + (sizeof(struct virt_header) - g->virt_header);
+
+}
+
+
 /*
  * initialize one packet and prepare for the next one.
  * The copy could be done better instead of repeating it each time.

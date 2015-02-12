@@ -46,6 +46,7 @@
 #include "pong.h"
 #include "udp_packet.h"
 #include "icmp_packet.h"
+#include "pcap_reader.h"
 
 struct targ *targs;
 static int global_nthreads;
@@ -242,6 +243,7 @@ tap_alloc(char *dev)
 	return fd;
 }
 
+
 /* library structure used by getopt_long
  *
  * struct option {
@@ -257,6 +259,7 @@ static struct option long_options[] = {
 		{0, 0, 0, 0 }
 };
 
+	
 int
 main(int arc, char **argv)
 {
@@ -286,7 +289,19 @@ main(int arc, char **argv)
 	g.mode = "udp";
 	int dparam_counter = 0;
 	g.gen_param = NULL;
+	
+	
+	struct generator_arg p_map[] = {
+		{ "udp" , initialize_packet_udp, update_addresses_udp, NULL },
+		{ "icmp", initialize_packet_icmp, update_addresses_icmp, NULL },
+		{ "pcap", initialize_reader, pcap_reader, close_reader },
+		{ NULL, NULL, NULL, NULL}
+	};
+	
+	g.pkt_map = p_map;
+	
 
+	
 	while ( (ch = getopt_long(arc, argv,
 			"a:f:F:n:i:Il:b:c:o:p:T:w:WvR:XC:H:e:m:g:", long_options, &opt_index)) != -1) {
 		struct sf *fn;

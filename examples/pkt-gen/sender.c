@@ -4,12 +4,12 @@
 #include "icmp_packet.h"
 
 uint8_t proto_idx;
-
+/*
 struct protocol {
 	char *key;
 	void *f_update;
 	void *f_close;
-};
+};*/
 
 static __inline struct timespec
 timespec_add(struct timespec a, struct timespec b)
@@ -120,109 +120,18 @@ dump_payload(char *p, int len, struct netmap_ring *ring, int cur)
 #define uh_sum check
 #endif /* linux */
 
-/*
- * increment the addressed in the packet,
- * starting from the least significant field.
- *	DST_IP DST_PORT SRC_IP SRC_PORT
- */
-static void
-update_addresses_udp(void **frame, struct glob_arg *g)
-{
-	uint32_t a;
-	uint16_t p;
-
-	/* Align the pointer to the structure pkt_udp */
-	*frame = *frame - (sizeof(struct virt_header) - g->virt_header);
-
-	struct pkt_udp *pkt = (struct pkt_udp *)*frame;
-	struct ip *ip = &pkt->ip;
-	struct udphdr *udp = &pkt->udp;
-
-	do {
-		p = ntohs(udp->uh_sport);
-
-		if (p < g->src_ip.port1) { /* just inc, no wrap */
-			udp->uh_sport = htons(p + 1);
-			break;
-		}
-		udp->uh_sport = htons(g->src_ip.port0);
-
-		a = ntohl(ip->ip_src.s_addr);
-		if (a < g->src_ip.end) { /* just inc, no wrap */
-			ip->ip_src.s_addr = htonl(a + 1);
-			break;
-		}
-		ip->ip_src.s_addr = htonl(g->src_ip.start);
-
-		udp->uh_sport = htons(g->src_ip.port0);
-		p = ntohs(udp->uh_dport);
-		if (p < g->dst_ip.port1) { /* just inc, no wrap */
-			udp->uh_dport = htons(p + 1);
-			break;
-		}
-		udp->uh_dport = htons(g->dst_ip.port0);
-
-		a = ntohl(ip->ip_dst.s_addr);
-		if (a < g->dst_ip.end) { /* just inc, no wrap */
-			ip->ip_dst.s_addr = htonl(a + 1);
-			break;
-		}
-		ip->ip_dst.s_addr = htonl(g->dst_ip.start);
-	} while (0);
-
-	// update checksum
-	checksumUdp(pkt);
-
-	*frame = *frame + (sizeof(struct virt_header) - g->virt_header);
-
-}
-
-static void
-update_addresses_icmp(void **frame, struct glob_arg *g)
-{
-	uint32_t a;
-
-	/* Align the pointer to the structure pkt_icmp */
-	*frame = *frame - (sizeof(struct virt_header) - g->virt_header);
-
-	struct pkt_icmp *pkt = (struct pkt_icmp *)*frame;
-
-	struct ip *ip = &pkt->ip;
-
-	do {
-		a = ntohl(ip->ip_src.s_addr);
-		if (a < g->src_ip.end) { // just inc, no wrap
-			ip->ip_src.s_addr = htonl(a + 1);
-			break;
-		}
-		ip->ip_src.s_addr = htonl(g->src_ip.start);
-
-		a = ntohl(ip->ip_dst.s_addr);
-		if (a < g->dst_ip.end) { // just inc, no wrap
-			ip->ip_dst.s_addr = htonl(a + 1);
-			break;
-		}
-		ip->ip_dst.s_addr = htonl(g->dst_ip.start);
-	} while (0);
-
-	// update checksum
-	checksumIcmp(pkt);
-
-	*frame = *frame + (sizeof(struct virt_header) - g->virt_header);
-
-}
 
 
 static int
 send_packets(struct netmap_ring *ring, void *frame,
 		int size, struct glob_arg *g, u_int count, int options,
-		u_int nfrags, struct protocol pkt_map[])
+		u_int nfrags)
 {
 
 	u_int n, sent, cur = ring->cur;
 	u_int fcnt;
 	void (*ptrf) ( void *pkt, struct glob_arg *g );
-	ptrf = pkt_map[proto_idx].f_update;
+	ptrf = g->pkt_map[proto_idx].f_update;
 
 	n = nm_ring_space(ring);
 	if (n < count)
@@ -315,16 +224,17 @@ sender_body(void *data)
 	D("Sending %d packets every  %ld.%09ld s",
 			targ->g->burst, targ->g->tx_period.tv_sec, targ->g->tx_period.tv_nsec);
 
+	/*
 	struct protocol pkt_map[] = {
 			{ "udp", update_addresses_udp, NULL },
 			{ "icmp", update_addresses_icmp, NULL },
 			{ "pcap", pcap_reader, close_reader },
 			{ NULL, NULL, NULL }
-	};
+	};*/
 
 	proto_idx = 0;
-	while( pkt_map[proto_idx].key != NULL ) {
-		if( strcmp(pkt_map[proto_idx].key, targ->g->mode) == 0 ) {
+	while( targ->g->pkt_map[proto_idx].key != NULL ) {
+		if( strcmp(targ->g->pkt_map[proto_idx].key, targ->g->mode) == 0 ) {
 			break;
 		}
 		proto_idx++;
@@ -334,7 +244,7 @@ sender_body(void *data)
 	size = targ->g->pkt_size;
 
 	void (*ptrf) ( void *pkt, struct glob_arg *g);
-	ptrf = pkt_map[proto_idx].f_update;
+	ptrf = targ->g->pkt_map[proto_idx].f_update;
 
 	D("start, fd %d main_fd %d", targ->fd, targ->g->main_fd);
 	if (setaffinity(targ->thread, targ->affinity))
@@ -424,7 +334,7 @@ sender_body(void *data)
 					limit = ((limit + frags - 1) / frags) * frags;
 
 				m = send_packets(txring,frame, size, targ->g,
-						limit, options, frags, pkt_map);
+						limit, options, frags);
 
 				ND("limit %d tail %d frags %d m %d",
 						limit, txring->tail, frags, m);
@@ -458,9 +368,9 @@ sender_body(void *data)
 	/* reset the ``used`` flag. */
 	targ->used = 0;
 
-	if(pkt_map[proto_idx].f_close != NULL) {
+	if(targ->g->pkt_map[proto_idx].f_close != NULL) {
 		void (*f_close) ();
-		f_close = pkt_map[proto_idx].f_close;
+		f_close = targ->g->pkt_map[proto_idx].f_close;
 		f_close();
 	}
 

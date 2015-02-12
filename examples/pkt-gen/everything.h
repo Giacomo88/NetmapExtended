@@ -112,6 +112,14 @@ struct tstamp {
 	uint32_t nsec;
 };
 
+
+struct generator_arg {
+	char *key;
+	void *f_init;
+	void *f_update;
+	void *f_close;
+};
+
 /*
  * global arguments for all threads
  */
@@ -121,6 +129,7 @@ struct glob_arg {
 	struct ip_range dst_ip;
 	struct mac_range dst_mac;
 	struct mac_range src_mac;
+	struct generator_arg *pkt_map;
 	
 	char **gen_param;
 	int verbose;

@@ -2,10 +2,6 @@
 #include "udp_packet.h"
 #include "icmp_packet.h"
 
-struct protocol {
-	char *key;
-	void *pkt_ptr;
-};
 
 /*
  * Send a packet, and wait for a response.

@@ -4,17 +4,15 @@
 #include "receiver.h"
 #include "pcap_reader.h"
 
-struct protocol {
-	char *key;
-	void *f_init;
-};
 
+/*
 static struct protocol pkt_map[] = {
 		{ "udp" , initialize_packet_udp },
 		{ "icmp", initialize_packet_icmp },
 		{ "pcap", initialize_reader },
 		{ NULL, NULL}
 };
+*/
 
 void
 start_threads(struct glob_arg *g, struct targ *targs)
@@ -79,13 +77,13 @@ start_threads(struct glob_arg *g, struct targ *targs)
 		}
 
 		int idx = 0;
-		while( pkt_map[idx].key != NULL ) {
-			if( strcmp(pkt_map[idx].key, g->mode) == 0 ) break;
+		while( g->pkt_map[idx].key != NULL ) {
+			if( strcmp(g->pkt_map[idx].key, g->mode) == 0 ) break;
 			idx++;
 		}
 
 		int (*ptrf) ( struct targ *targs );
-		ptrf = pkt_map[idx].f_init;
+		ptrf = g->pkt_map[idx].f_init;
 		if(	ptrf(t) < 0 ) D("initialize failure");
 		else {
 
