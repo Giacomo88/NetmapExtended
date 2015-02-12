@@ -20,7 +20,6 @@ pcap_reader(void **frame, struct glob_arg *g)
 	u_char *pad = (u_char*)malloc(size_vh);
 	memset(pad,0, size_vh);
 
-
 	if(head==NULL) {
 		pcap_close(head);
 		char errbuf[PCAP_ERRBUF_SIZE];

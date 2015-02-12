@@ -1,8 +1,6 @@
 #include "everything.h"
 #include "extract.h"
 
-
-
 /* Compute the checksum of the given ip header. */
 static uint16_t
 checksum(const void *data, uint16_t len, uint32_t sum)

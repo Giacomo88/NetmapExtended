@@ -1,15 +1,6 @@
 #include "everything.h"
-#include "pcap_reader.h"
-#include "udp_packet.h"
-#include "icmp_packet.h"
 
 uint8_t proto_idx;
-/*
-struct protocol {
-	char *key;
-	void *f_update;
-	void *f_close;
-};*/
 
 static __inline struct timespec
 timespec_add(struct timespec a, struct timespec b)
@@ -120,8 +111,6 @@ dump_payload(char *p, int len, struct netmap_ring *ring, int cur)
 #define uh_sum check
 #endif /* linux */
 
-
-
 static int
 send_packets(struct netmap_ring *ring, void *frame,
 		int size, struct glob_arg *g, u_int count, int options,
@@ -223,14 +212,6 @@ sender_body(void *data)
 			targ->g->src_mac.name, targ->g->dst_mac.name);
 	D("Sending %d packets every  %ld.%09ld s",
 			targ->g->burst, targ->g->tx_period.tv_sec, targ->g->tx_period.tv_nsec);
-
-	/*
-	struct protocol pkt_map[] = {
-			{ "udp", update_addresses_udp, NULL },
-			{ "icmp", update_addresses_icmp, NULL },
-			{ "pcap", pcap_reader, close_reader },
-			{ NULL, NULL, NULL }
-	};*/
 
 	proto_idx = 0;
 	while( targ->g->pkt_map[proto_idx].key != NULL ) {

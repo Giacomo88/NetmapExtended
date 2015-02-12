@@ -141,12 +141,12 @@ usage(void)
 			"%s arguments\n"
 			"\t--data param_name=VALUE   	parameters for packet generator:\n"
 			"\t\tdst_ip src_ip dst-mac src-mac pcap-file pkt-size virt_header\n"
-			"\t-g pkts_generator		(can be udp icmp pcap)\n"
+			"\t-g pkts_generator	(can be udp icmp pcap)\n"
 			"\t-i interface			interface name\n"
 			"\t-f function			tx rx ping pong\n"
-			"\t-n count			number of iterations (can be 0)\n"
+			"\t-n count				number of iterations (can be 0)\n"
 			"\t-t pkts_to_send		also forces tx mode\n"
-			"\t-r pkts_to_receive		also forces rx mode\n"
+			"\t-r pkts_to_receive	also forces rx mode\n"
 			/*"\t-l pkt_size			in bytes excluding CRC\n"
 			"\t-d dst_ip[:port[-dst_ip:port]]   single or range\n"
 		"\t-s src_ip[:port[-src_ip:port]]   single or range\n"
@@ -154,14 +154,14 @@ usage(void)
 		"\t-S src-mac\n" */
 			"\t-a cpu_id			use setaffinity\n"
 			"\t-b burst size		testing, mostly\n"
-			"\t-c cores			cores to use\n"
+			"\t-c cores				cores to use\n"
 			"\t-p threads			processes/threads to use\n"
 			"\t-T report_ms			milliseconds between reports\n"
-			"\t-P				use libpcap instead of netmap\n"
+			"\t-P					use libpcap instead of netmap\n"
 			"\t-w wait_for_link_time	in seconds\n"
-			"\t-R rate			in packets per second\n"
-			"\t-X				dump payload\n"
-			"\t-H len			add empty virtio-net-header with size 'len'\n"
+			"\t-R rate				in packets per second\n"
+			"\t-X					dump payload\n"
+			"\t-H len				add empty virtio-net-header with size 'len'\n"
 			"",
 			cmd);
 
@@ -259,7 +259,6 @@ static struct option long_options[] = {
 		{0, 0, 0, 0 }
 };
 
-	
 int
 main(int arc, char **argv)
 {
@@ -271,7 +270,6 @@ main(int arc, char **argv)
 	int opt_index=0;	/* index of long options (getopt_long) */
 	int index=0, i=0;
 	int correct_gen = 0; 
-	
 
 	bzero(&g, sizeof(g));
 	g.verbose = 0;
@@ -289,19 +287,16 @@ main(int arc, char **argv)
 	g.mode = "udp";
 	int dparam_counter = 0;
 	g.gen_param = NULL;
-	
-	
-	struct generator_arg p_map[] = {
-		{ "udp" , initialize_packet_udp, update_addresses_udp, NULL },
-		{ "icmp", initialize_packet_icmp, update_addresses_icmp, NULL },
-		{ "pcap", initialize_reader, pcap_reader, close_reader },
-		{ NULL, NULL, NULL, NULL}
-	};
-	
-	g.pkt_map = p_map;
-	
 
-	
+	struct generator_arg p_map[] = {
+			{ "udp" ,	initialize_packet_udp, 	update_addresses_udp, 	NULL },
+			{ "icmp",	initialize_packet_icmp, update_addresses_icmp, 	NULL },
+			{ "pcap",	initialize_reader, 		pcap_reader, 			close_reader },
+			{ NULL, 	NULL, 					NULL, 					NULL}
+	};
+
+	g.pkt_map = p_map;
+
 	while ( (ch = getopt_long(arc, argv,
 			"a:f:F:n:i:Il:b:c:o:p:T:w:WvR:XC:H:e:m:g:", long_options, &opt_index)) != -1) {
 		struct sf *fn;
@@ -489,12 +484,11 @@ main(int arc, char **argv)
 			break;
 		}
 	}
-	if(correct_gen == 0)
-	{
+	if(correct_gen == 0) {
 		D("generator %s not exists", g.mode);
 		usage();
 	}
-	
+
 	/* check interface name */
 	if (g.ifname == NULL) {
 		D("missing ifname");
@@ -640,7 +634,7 @@ main(int arc, char **argv)
 	global_nthreads = g.nthreads;
 	signal(SIGINT, sigint_h);
 
-	/*This calloc was originally in start_threads()*/
+	/* This calloc was originally in start_threads() */
 	targs = calloc(g.nthreads, sizeof(*targs));
 	start_threads(&g, targs);
 	main_thread(&g, targs);

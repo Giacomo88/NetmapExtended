@@ -1,7 +1,4 @@
 #include "everything.h"
-#include "udp_packet.h"
-#include "icmp_packet.h"
-
 
 /*
  * Send a packet, and wait for a response.

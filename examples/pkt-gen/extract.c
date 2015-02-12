@@ -86,7 +86,6 @@ extract_mac_range(struct mac_range *r, int verbose)
 		D("%s starts at %s", r->name, ether_ntoa(&r->start));
 }
 
-
 /*
  * locate the src mac address for our interface, put it
  * into the user-supplied buffer. return 0 if ok, -1 on error.

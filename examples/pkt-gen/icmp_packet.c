@@ -52,8 +52,6 @@ checksumIcmp(struct pkt_icmp *pkt)
 	icmp->checksum = wrapsum(checksum(icmp, paylen , 0));
 }
 
-
-
 void
 update_addresses_icmp(void **frame, struct glob_arg *g)
 {

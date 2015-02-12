@@ -1,18 +1,5 @@
 #include "everything.h"
-#include "udp_packet.h"
-#include "icmp_packet.h"
 #include "receiver.h"
-#include "pcap_reader.h"
-
-
-/*
-static struct protocol pkt_map[] = {
-		{ "udp" , initialize_packet_udp },
-		{ "icmp", initialize_packet_icmp },
-		{ "pcap", initialize_reader },
-		{ NULL, NULL}
-};
-*/
 
 void
 start_threads(struct glob_arg *g, struct targ *targs)

@@ -112,7 +112,6 @@ struct tstamp {
 	uint32_t nsec;
 };
 
-
 struct generator_arg {
 	char *key;
 	void *f_init;
@@ -130,7 +129,7 @@ struct glob_arg {
 	struct mac_range dst_mac;
 	struct mac_range src_mac;
 	struct generator_arg *pkt_map;
-	
+
 	char **gen_param;
 	int verbose;
 	int pkt_size;
@@ -220,14 +219,6 @@ struct targ {
 
 #define	PAY_OFS	42	/* where in the pkt... */
 
-#define R_PCAP "read" //read packets from a pcap file
-#define GEN "gen"	//generate packets
-
-/*
-#define PKT_UDP 0
-#define PKT_ICMP 1
-#define ALL_PROTO 255
-*/
 struct long_opt_parameter {
 	char *name;		//parameter name
 	void *value_loc;	//where to store the value
