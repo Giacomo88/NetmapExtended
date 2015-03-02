@@ -2,23 +2,18 @@
 #include "extract.h"
 
 /* Compute the checksum of the given ip header. */
-static uint16_t
+/*static uint16_t
 checksum(const void *data, uint16_t len, uint32_t sum)
 {
 	const uint8_t *addr = data;
 	uint32_t i;
 
-	/* Checksum all the pairs of bytes first... */
 	for (i = 0; i < (len & ~1U); i += 2) {
 		sum += (u_int16_t)ntohs(*((u_int16_t *)(addr + i)));
 		if (sum > 0xFFFF)
 			sum -= 0xFFFF;
 	}
-	/*
-	 * If there's a single byte left over, checksum it, too.
-	 * Network byte order is big-endian, so the remaining byte is
-	 * the high byte.
-	 */
+
 	if (i < len) {
 		sum += addr[i] << 8;
 		if (sum > 0xFFFF)
@@ -33,7 +28,7 @@ wrapsum(u_int32_t sum)
 	sum = ~sum & 0xFFFF;
 	return (htons(sum));
 }
-
+*/
 void
 checksumIcmp(struct pkt_icmp *pkt)
 {
@@ -113,7 +108,7 @@ initialize_packet_icmp(struct targ *targ)
 	targ->g->virt_header = 0;
 
 	/* if user enter some --data param */
-	if(targ->g->gen_param != NULL) {
+	if (targ->g->gen_param != NULL) {
 
 		/* parameters to parse */
 		struct long_opt_parameter data_param[] = {
@@ -127,10 +122,10 @@ initialize_packet_icmp(struct targ *targ)
 		};
 
 		/* parse gen_param array */
-		for(i=0; targ->g->gen_param[i] != NULL; i++) {
-			for(j=0; data_param[j].name != NULL; j++) {
-				if(strncmp(data_param[j].name, targ->g->gen_param[i], strlen(data_param[j].name)) == 0){
-					if(strcmp(data_param[j].type, "char")==0)
+		for (i = 0; targ->g->gen_param[i] != NULL; i++) {
+			for ( j = 0; data_param[j].name != NULL; j++) {
+				if (strncmp(data_param[j].name, targ->g->gen_param[i], strlen(data_param[j].name)) == 0) {
+					if (strcmp(data_param[j].type, "char") == 0)
 						*((uintptr_t*)(data_param[j].value_loc)) = (uintptr_t) &(targ->g->gen_param[i][strlen(data_param[j].name)+1]);
 					else /*int param use atoi*/
 						*((int*)(data_param[j].value_loc)) =  (atoi(&targ->g->gen_param[i][strlen(data_param[j].name)+1]));

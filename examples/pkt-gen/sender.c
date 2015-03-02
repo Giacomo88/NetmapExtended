@@ -94,10 +94,10 @@ dump_payload(char *p, int len, struct netmap_ring *ring, int cur)
 		memset(buf, sizeof(buf), ' ');
 		sprintf(buf, "%5d: ", i);
 		i0 = i;
-		for (j=0; j < 16 && i < len; i++, j++)
+		for ( j = 0; j < 16 && i < len; i++, j++)
 			sprintf(buf+7+j*3, "%02x ", (uint8_t)(p[i]));
 		i = i0;
-		for (j=0; j < 16 && i < len; i++, j++)
+		for ( j = 0; j < 16 && i < len; i++, j++)
 			sprintf(buf+7+j + 48, "%c",
 					isprint(p[i]) ? p[i] : '.');
 		printf("%s\n", buf);
@@ -272,7 +272,7 @@ sender_body(void *data)
 		}
 #endif /* NO_PCAP */
 	} else {
-		int tosend = 0;
+		int tosend = 0, m=0, limit;
 		int frags = targ->g->frags;
 		nifp = targ->nmd->nifp;
 		while (!targ->cancel && (n == 0 || sent < n)) {
@@ -305,7 +305,8 @@ sender_body(void *data)
 				options &= ~OPT_COPY;
 			}
 			for (i = targ->nmd->first_tx_ring; i <= targ->nmd->last_tx_ring; i++) {
-				int m=0, limit = rate_limit ?  tosend : targ->g->burst;
+				m=0;
+				limit = rate_limit ?  tosend : targ->g->burst;
 				if (n > 0 && n - sent < limit)
 					limit = n - sent;
 				txring = NETMAP_TXRING(nifp, i);
@@ -349,7 +350,7 @@ sender_body(void *data)
 	/* reset the ``used`` flag. */
 	targ->used = 0;
 
-	if(targ->g->pkt_map[proto_idx].f_close != NULL) {
+	if (targ->g->pkt_map[proto_idx].f_close != NULL) {
 		void (*f_close) ();
 		f_close = targ->g->pkt_map[proto_idx].f_close;
 		f_close();

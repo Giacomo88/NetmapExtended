@@ -20,7 +20,7 @@ pcap_reader(void **frame, struct glob_arg *g)
 	u_char *pad = (u_char*)malloc(size_vh);
 	memset(pad,0, size_vh);
 
-	if(head==NULL) {
+	if (head == NULL) {
 		pcap_close(head);
 		char errbuf[PCAP_ERRBUF_SIZE];
 		head = pcap_open_offline(filename, errbuf);   //call pcap library function
@@ -33,7 +33,7 @@ pcap_reader(void **frame, struct glob_arg *g)
 
 	while (1) {
 
-		if((packet = pcap_next(head,&header))==NULL) {
+		if ((packet = pcap_next(head,&header)) == NULL) {
 			pcap_close(head);
 			char errbuf[PCAP_ERRBUF_SIZE]; //not sure what to do with this, oh well
 			head = pcap_open_offline(filename, errbuf);   //call pcap library function
@@ -58,10 +58,11 @@ pcap_reader(void **frame, struct glob_arg *g)
 
 		struct ip *ip_hdr = (struct ip *)&pkt_ptr[ether_offset]; //point to an IP header structure
 
-		if(ip_hdr->ip_p == IPPROTO_ICMP || ip_hdr->ip_p == IPPROTO_UDP){
+		if (ip_hdr->ip_p == IPPROTO_ICMP || ip_hdr->ip_p == IPPROTO_UDP) {
 
 			g->pkt_size = header.len;
-			if(buffer!=NULL) free(buffer);
+			if (buffer != NULL) 
+				free(buffer);
 			buffer = (u_char*)malloc(g->pkt_size  + size_vh);
 			memcpy(buffer,pad,size_vh);
 			memcpy(buffer + size_vh, pkt_ptr, g->pkt_size );
@@ -83,7 +84,7 @@ initialize_reader(struct targ *targ)
 	targ->g->pcap_file = NULL;
 
 	/* if user enter some --data param */
-	if(targ->g->gen_param != NULL) {
+	if (targ->g->gen_param != NULL) {
 
 		int i, j;
 
@@ -94,9 +95,9 @@ initialize_reader(struct targ *targ)
 		};
 
 		/* parse gen_param array */
-		for(i=0; targ->g->gen_param[i] != NULL; i++) {
-			for(j=0; data_param[j].name != NULL; j++) {
-				if(strncmp(data_param[j].name, targ->g->gen_param[i], strlen(data_param[j].name)) == 0){
+		for (i = 0; targ->g->gen_param[i] != NULL; i++) {
+			for (j = 0; data_param[j].name != NULL; j++) {
+				if (strncmp(data_param[j].name, targ->g->gen_param[i], strlen(data_param[j].name)) == 0) {
 					*((uintptr_t*)(data_param[j].value_loc)) = (uintptr_t) &(targ->g->gen_param[i][strlen(data_param[j].name)+1]);
 					break;
 				}
@@ -107,7 +108,7 @@ initialize_reader(struct targ *targ)
 		free(targ->g->gen_param);
 	}
 
-	if((filename = targ->g->pcap_file) == NULL)	{
+	if ((filename = targ->g->pcap_file) == NULL) {
 		D("Please insert a file pcap");
 		return -1;
 	}

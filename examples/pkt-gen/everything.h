@@ -1,4 +1,5 @@
-#pragma once
+#ifndef EVERYTHING_H
+#define EVERYTHING_H
 
 #define _GNU_SOURCE	/* for CPU_SET() */
 #include <stdio.h>
@@ -224,3 +225,38 @@ struct long_opt_parameter {
 	void *value_loc;	//where to store the value
 	char *type;		//type of parameter
 };
+
+/* Compute the checksum of the given ip header. */
+static inline uint16_t
+checksum(const void *data, uint16_t len, uint32_t sum)
+{
+	const uint8_t *addr = data;
+	uint32_t i;
+
+	/* Checksum all the pairs of bytes first... */
+	for (i = 0; i < (len & ~1U); i += 2) {
+		sum += (u_int16_t)ntohs(*((u_int16_t *)(addr + i)));
+		if (sum > 0xFFFF)
+			sum -= 0xFFFF;
+	}
+	/*
+	 * If there's a single byte left over, checksum it, too.
+	 * Network byte order is big-endian, so the remaining byte is
+	 * the high byte.
+	 */
+	if (i < len) {
+		sum += addr[i] << 8;
+		if (sum > 0xFFFF)
+			sum -= 0xFFFF;
+	}
+	return sum;
+}
+
+static inline u_int16_t
+wrapsum(u_int32_t sum)
+{
+	sum = ~sum & 0xFFFF;
+	return (htons(sum));
+}
+
+#endif //EVERYTHING_H

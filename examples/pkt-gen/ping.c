@@ -78,7 +78,8 @@ pinger_body(void *data)
 					ts.tv_nsec += 1000000000;
 					ts.tv_sec--;
 				}
-				if (1) D("seq %d/%d delta %d.%09d", seq, sent,
+				if (1)
+					D("seq %d/%d delta %d.%09d", seq, sent,
 						(int)ts.tv_sec, (int)ts.tv_nsec);
 				if (ts.tv_nsec < (int)min)
 					min = ts.tv_nsec;

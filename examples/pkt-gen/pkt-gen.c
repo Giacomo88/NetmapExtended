@@ -38,15 +38,16 @@
  */
 
 #include "everything.h"
-#include "main_thread.h"
-#include "start_threads.h"
 #include "sender.h"
-#include "receiver.h"
-#include "ping.h"
-#include "pong.h"
 #include "udp_packet.h"
 #include "icmp_packet.h"
 #include "pcap_reader.h"
+
+void main_thread(struct glob_arg *g, struct targ *targs);
+void start_threads(struct glob_arg *g, struct targ *targs);
+void *ponger_body(void *data);
+void *pinger_body(void *data);
+void *receiver_body(void *data);
 
 struct targ *targs;
 static int global_nthreads;
@@ -254,9 +255,8 @@ tap_alloc(char *dev)
  * };
  */
 static struct option long_options[] = {
-		{"data", required_argument, 0, 0},
-		//{"arg", required_argument, 0, 0},
-		{0, 0, 0, 0 }
+		{ "data", required_argument, 0, 0 },
+		{ 0, 0, 0, 0 }
 };
 
 int
@@ -269,7 +269,18 @@ main(int arc, char **argv)
 	int devqueues = 1;	/* how many device queues */
 	int opt_index=0;	/* index of long options (getopt_long) */
 	int index=0, i=0;
-	int correct_gen = 0; 
+	int correct_gen = 0;
+	int dparam_counter = 0;
+	uint64_t x;
+	int lim;
+
+ 
+ 	struct generator_arg p_map[] = {
+			{ "udp" ,	initialize_packet_udp, 	update_addresses_udp, 	NULL },
+			{ "icmp",	initialize_packet_icmp, update_addresses_icmp, 	NULL },
+			{ "pcap",	initialize_reader, 		pcap_reader, 			close_reader },
+			{ NULL, 	NULL, 					NULL, 					NULL }
+	};
 
 	bzero(&g, sizeof(g));
 	g.verbose = 0;
@@ -285,16 +296,7 @@ main(int arc, char **argv)
 	g.frags = 1;
 	g.nmr_config = "";
 	g.mode = "udp";
-	int dparam_counter = 0;
 	g.gen_param = NULL;
-
-	struct generator_arg p_map[] = {
-			{ "udp" ,	initialize_packet_udp, 	update_addresses_udp, 	NULL },
-			{ "icmp",	initialize_packet_icmp, update_addresses_icmp, 	NULL },
-			{ "pcap",	initialize_reader, 		pcap_reader, 			close_reader },
-			{ NULL, 	NULL, 					NULL, 					NULL}
-	};
-
 	g.pkt_map = p_map;
 
 	while ( (ch = getopt_long(arc, argv,
@@ -309,17 +311,17 @@ main(int arc, char **argv)
 
 		case 0: // LONG_OPTIONS CASE
 
-			if(strcmp(long_options[opt_index].name, "data") == 0) {
+			if (strcmp(long_options[opt_index].name, "data") == 0) {
 				/* count the number of parameters for --data */
-				for(index = optind-1; index < arc && argv[index][0] != '-'; index++)
+				for (index = optind-1; index < arc && argv[index][0] != '-'; index++)
 					dparam_counter++;
 
 				/* allocate memory for g.data structure (array of string) */
 				g.gen_param = (char**)malloc(sizeof(char*) * (dparam_counter + 1));
-				int i=0;
+				i=0;
 
 				/* insert every paramenter in a position of g.data */
-				for(index = optind-1; index < arc && argv[index][0] != '-'; index++) {
+				for (index = optind-1; index < arc && argv[index][0] != '-'; index++) {
 					g.gen_param[i] = argv[index];
 					i++;
 				}
@@ -398,19 +400,7 @@ main(int arc, char **argv)
 		case 'I':
 			g.options |= OPT_INDIRECT;	/* XXX use indirect buffer */
 			break;
-
-			/*	case 'l':	//pkt_size
-			g.pkt_size = atoi(optarg);
-			break;*/
-
-			/*case 'd':
-			g.dst_ip.name = optarg;
-			break;
-
-		case 's':
-			g.src_ip.name = optarg;
-			break;*/
-
+			
 		case 'T':	/* report interval */
 			g.report_interval = atoi(optarg);
 			break;
@@ -434,14 +424,7 @@ main(int arc, char **argv)
 		case 'p':
 			g.nthreads = atoi(optarg);
 			break;
-
-			/*case 'D': // destination mac
-			g.dst_mac.name = optarg;
-			break;
-
-		case 'S': // source mac
-			g.src_mac.name = optarg;
-			break;*/
+			
 		case 'v':
 			g.verbose++;
 			break;
@@ -453,13 +436,11 @@ main(int arc, char **argv)
 		case 'X':
 			g.options |= OPT_DUMP;
 			break;
+		
 		case 'C':
 			g.nmr_config = strdup(optarg);
 			break;
 
-			/*case 'H':
-			g.virt_header = atoi(optarg);
-			break;*/
 		case 'e': /* extra bufs */
 			g.extra_bufs = atoi(optarg);
 			break;
@@ -478,13 +459,13 @@ main(int arc, char **argv)
 
 	/* check generator name */
 	correct_gen = 0;
-	for(i=0; p_map[i].key != NULL; i++) {
-		if(strcmp(p_map[i].key, g.mode) == 0) {
+	for (i = 0; p_map[i].key != NULL; i++) {
+		if (strcmp(p_map[i].key, g.mode) == 0) {
 			correct_gen = 1;
 			break;
 		}
 	}
-	if(correct_gen == 0) {
+	if (correct_gen == 0) {
 		D("generator %s not exists", g.mode);
 		usage();
 	}
@@ -613,8 +594,7 @@ main(int arc, char **argv)
 		 * reducing the burst size to some 0.01s worth of data
 		 * (but no less than one full set of fragments)
 		 */
-		uint64_t x;
-		int lim = (g.tx_rate)/300;
+		lim = (g.tx_rate)/300;
 		if (g.burst > lim)
 			g.burst = lim;
 		if (g.burst < g.frags)
@@ -637,7 +617,7 @@ main(int arc, char **argv)
 	/* This calloc was originally in start_threads() */
 	targs = calloc(g.nthreads, sizeof(*targs));
 	start_threads(&g, targs);
-	main_thread(&g, targs);
+	//main_thread(&g, targs);
 	return 0;
 }
 

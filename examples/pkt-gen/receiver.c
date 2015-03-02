@@ -45,6 +45,7 @@ receiver_body(void *data)
 	struct netmap_ring *rxring;
 	int i;
 	uint64_t received = 0;
+	char buf[MAX_BODYSIZE];
 
 	if (setaffinity(targ->thread, targ->affinity))
 		goto quit;
@@ -63,7 +64,6 @@ receiver_body(void *data)
 	clock_gettime(CLOCK_REALTIME_PRECISE, &targ->tic);
 	if (targ->g->dev_type == DEV_TAP) {
 		while (!targ->cancel) {
-			char buf[MAX_BODYSIZE];
 			/* XXX should we poll ? */
 			if (read(targ->g->main_fd, buf, sizeof(buf)) > 0)
 				targ->count++;
