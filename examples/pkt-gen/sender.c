@@ -74,7 +74,6 @@ setaffinity(pthread_t me, int i)
 	return 0;
 }
 
-
 /* Check the payload of the packet for errors (use it for debug).
  * Look for consecutive ascii representations of the size of the packet.
  */
@@ -207,15 +206,17 @@ sender_body(void *data)
 	int size=0;
 
 	/* print some information */
-	fprintf(stdout, "%s -> %s (%s -> %s)\n",
-			targ->g->src_ip.name, targ->g->dst_ip.name,
-			targ->g->src_mac.name, targ->g->dst_mac.name);
+	if (strcmp(targ->g->mode,"pcap") != 0)
+		fprintf(stdout, "%s -> %s (%s -> %s)\n",
+				targ->g->src_ip.name, targ->g->dst_ip.name,
+				targ->g->src_mac.name, targ->g->dst_mac.name);
+
 	D("Sending %d packets every  %ld.%09ld s",
 			targ->g->burst, targ->g->tx_period.tv_sec, targ->g->tx_period.tv_nsec);
 
 	proto_idx = 0;
-	while( targ->g->pkt_map[proto_idx].key != NULL ) {
-		if( strcmp(targ->g->pkt_map[proto_idx].key, targ->g->mode) == 0 ) {
+	while (targ->g->pkt_map[proto_idx].key != NULL) {
+		if (strcmp(targ->g->pkt_map[proto_idx].key, targ->g->mode) == 0) {
 			break;
 		}
 		proto_idx++;
@@ -224,7 +225,7 @@ sender_body(void *data)
 	frame = targ->packet;
 	size = targ->g->pkt_size;
 
-	void (*ptrf) ( void *pkt, struct glob_arg *g);
+	void (*ptrf) (void *pkt, struct glob_arg *g);
 	ptrf = targ->g->pkt_map[proto_idx].f_update;
 
 	D("start, fd %d main_fd %d", targ->fd, targ->g->main_fd);

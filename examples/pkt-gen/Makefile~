@@ -20,8 +20,8 @@ LDFLAGS += -lpthread
 LDFLAGS += -lrt	# needed on linux, does not harm on BSD
 #SRCS = pkt-gen.c
 
-pkt-gen: pkt-gen.o sender.o receiver.o udp_packet.o start_threads.o ping.o pong.o icmp_packet.o pcap_reader.o extract.o
-	$(CC) $(CFLAGS) -o pkt-gen pkt-gen.o sender.o receiver.o udp_packet.o start_threads.o ping.o pong.o icmp_packet.o pcap_reader.o extract.o $(LDFLAGS)
+pkt-gen: pkt-gen.o
+	$(CC) $(CFLAGS) -o pkt-gen pkt-gen.o $(LDFLAGS)
 
 clean:
 	-@rm -rf $(CLEANFILES)

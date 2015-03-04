@@ -2,7 +2,7 @@
 
 /*
  * Send a packet, and wait for a response.
- * The payload (after UDP header, ofs 42) has a 4-byte sequence
+ * The payload (after UDP/ICMP header, ofs 42) has a 4-byte sequence
  * followed by a struct timeval (or bintime?)
  */
 void *

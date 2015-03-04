@@ -28,7 +28,7 @@ wrapsum(u_int32_t sum)
 	sum = ~sum & 0xFFFF;
 	return (htons(sum));
 }
-*/
+ */
 void
 checksumIcmp(struct pkt_icmp *pkt)
 {
@@ -56,7 +56,6 @@ update_addresses_icmp(void **frame, struct glob_arg *g)
 	*frame = *frame - (sizeof(struct virt_header) - g->virt_header);
 
 	struct pkt_icmp *pkt = (struct pkt_icmp *)*frame;
-
 	struct ip *ip = &pkt->ip;
 
 	do {
@@ -75,13 +74,11 @@ update_addresses_icmp(void **frame, struct glob_arg *g)
 		ip->ip_dst.s_addr = htonl(g->dst_ip.start);
 	} while (0);
 
-	// update checksum
+	/* update checksum */
 	checksumIcmp(pkt);
 
 	*frame = *frame + (sizeof(struct virt_header) - g->virt_header);
-
 }
-
 
 /*
  * initialize one packet and prepare for the next one.
@@ -220,6 +217,7 @@ initialize_packet_icmp(struct targ *targ)
 	eh->ether_type = htons(ETHERTYPE_IP);
 
 	bzero(&pkt->vh, sizeof(pkt->vh));
+
 	// dump_payload((void *)pkt, targ->g->pkt_size, NULL, 0);
 	targ->packet = &targ->pkt_icmp;
 

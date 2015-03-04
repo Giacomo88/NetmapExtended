@@ -43,6 +43,7 @@
 #include "icmp_packet.h"
 #include "pcap_reader.h"
 
+/* functions prototype */
 void main_thread(struct glob_arg *g, struct targ *targs);
 void start_threads(struct glob_arg *g, struct targ *targs);
 void *ponger_body(void *data);
@@ -175,11 +176,11 @@ struct sf {
 };
 
 static struct sf func[] = {
-		{ "tx",	sender_body },
-		{ "rx",	receiver_body },
+		{ "tx",		sender_body },
+		{ "rx",		receiver_body },
 		{ "ping",	pinger_body },
 		{ "pong",	ponger_body },
-		{ NULL, NULL }
+		{ NULL, 	NULL }
 };
 
 static int
@@ -274,8 +275,8 @@ main(int arc, char **argv)
 	uint64_t x;
 	int lim;
 
- 
- 	struct generator_arg p_map[] = {
+
+	struct generator_arg p_map[] = {
 			{ "udp" ,	initialize_packet_udp, 	update_addresses_udp, 	NULL },
 			{ "icmp",	initialize_packet_icmp, update_addresses_icmp, 	NULL },
 			{ "pcap",	initialize_reader, 		pcap_reader, 			close_reader },
@@ -400,7 +401,7 @@ main(int arc, char **argv)
 		case 'I':
 			g.options |= OPT_INDIRECT;	/* XXX use indirect buffer */
 			break;
-			
+
 		case 'T':	/* report interval */
 			g.report_interval = atoi(optarg);
 			break;
@@ -424,7 +425,7 @@ main(int arc, char **argv)
 		case 'p':
 			g.nthreads = atoi(optarg);
 			break;
-			
+
 		case 'v':
 			g.verbose++;
 			break;
@@ -436,7 +437,7 @@ main(int arc, char **argv)
 		case 'X':
 			g.options |= OPT_DUMP;
 			break;
-		
+
 		case 'C':
 			g.nmr_config = strdup(optarg);
 			break;

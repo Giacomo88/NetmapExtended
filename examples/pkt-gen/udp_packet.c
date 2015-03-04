@@ -1,8 +1,6 @@
 #include "everything.h"
 #include "extract.h"
 
-
-
 void checksumUdp(struct pkt_udp *pkt)
 {
 	struct ip *ip;
@@ -76,13 +74,11 @@ update_addresses_udp(void **frame, struct glob_arg *g)
 		ip->ip_dst.s_addr = htonl(g->dst_ip.start);
 	} while (0);
 
-	// update checksum
+	/* update checksum */
 	checksumUdp(pkt);
 
 	*frame = *frame + (sizeof(struct virt_header) - g->virt_header);
-
 }
-
 
 /*
  * initialize one packet and prepare for the next one.

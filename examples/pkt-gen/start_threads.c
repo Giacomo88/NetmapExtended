@@ -242,6 +242,7 @@ start_threads(struct glob_arg *g, struct targ *targs)
 
 		int (*ptrf) (struct targ *targs);
 		ptrf = g->pkt_map[idx].f_init;
+
 		if (ptrf(t) < 0) D("initialize failure");
 		else {
 			if (pthread_create(&t->thread, NULL, g->td_body, t) == -1) {
@@ -251,5 +252,6 @@ start_threads(struct glob_arg *g, struct targ *targs)
 		}
 	}
 	
+	/* start main_thread */
 	main_thread(g, targs);
 }
