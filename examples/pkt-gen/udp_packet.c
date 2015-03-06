@@ -5,11 +5,12 @@ void checksumUdp(struct pkt_udp *pkt)
 {
 	struct ip *ip;
 	struct udphdr *udp;
-
+	uint16_t paylen;
+	
 	ip = &pkt->ip;
 	udp = &pkt->udp;
 
-	uint16_t paylen= htons(ip->ip_len) - sizeof(struct ip);
+	paylen = htons(ip->ip_len) - sizeof(struct ip);
 
 	ip->ip_sum = 0;
 	ip->ip_sum = wrapsum(checksum(ip, sizeof(*ip), 0));
@@ -128,9 +129,9 @@ initialize_packet_udp(struct targ *targ)
 			for (j = 0; data_param[j].name != NULL; j++) {
 				if (strncmp(data_param[j].name, targ->g->gen_param[i], strlen(data_param[j].name)) == 0){
 					if (strcmp(data_param[j].type, "char") == 0)
-						*((uintptr_t*)(data_param[j].value_loc)) = (uintptr_t) &(targ->g->gen_param[i][strlen(data_param[j].name)+1]);
+						*((uintptr_t*)(data_param[j].value_loc)) = (uintptr_t) &(targ->g->gen_param[i][strlen(data_param[j].name) + 1]);
 					else /*int param use atoi*/
-						*((int*)(data_param[j].value_loc)) =  (atoi(&targ->g->gen_param[i][strlen(data_param[j].name)+1]));
+						*((int*)(data_param[j].value_loc)) =  (atoi(&targ->g->gen_param[i][strlen(data_param[j].name) + 1]));
 					break;
 				}
 			}
@@ -150,7 +151,7 @@ initialize_packet_udp(struct targ *targ)
 		/* retrieve source mac address. */
 		if (source_hwaddr(targ->g->ifname, mybuf, targ->g->verbose) == -1) {
 			D("Unable to retrieve source mac");
-			// continue, fail later
+			return -1;
 		}
 		targ->g->src_mac.name = mybuf;
 	}
@@ -183,7 +184,7 @@ initialize_packet_udp(struct targ *targ)
 	/* create a nice NUL-terminated string */
 	for (i = 0; i < paylen; i += l0) {
 		if (l0 > paylen - i)
-			l0 = paylen - i; // last round
+			l0 = paylen - i; /* last round */
 		bcopy(payload, pkt->body + i, l0);
 	}
 	pkt->body[i-1] = '\0';
@@ -217,7 +218,7 @@ initialize_packet_udp(struct targ *targ)
 	eh->ether_type = htons(ETHERTYPE_IP);
 
 	bzero(&pkt->vh, sizeof(pkt->vh));
-	// dump_payload((void *)pkt, targ->g->pkt_size, NULL, 0);
+	/* dump_payload((void *)pkt, targ->g->pkt_size, NULL, 0); */
 	targ->packet = &targ->pkt_udp;
 
 	/* previously inside in sender and ping */

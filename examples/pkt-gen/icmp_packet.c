@@ -1,34 +1,6 @@
 #include "everything.h"
 #include "extract.h"
 
-/* Compute the checksum of the given ip header. */
-/*static uint16_t
-checksum(const void *data, uint16_t len, uint32_t sum)
-{
-	const uint8_t *addr = data;
-	uint32_t i;
-
-	for (i = 0; i < (len & ~1U); i += 2) {
-		sum += (u_int16_t)ntohs(*((u_int16_t *)(addr + i)));
-		if (sum > 0xFFFF)
-			sum -= 0xFFFF;
-	}
-
-	if (i < len) {
-		sum += addr[i] << 8;
-		if (sum > 0xFFFF)
-			sum -= 0xFFFF;
-	}
-	return sum;
-}
-
-static u_int16_t
-wrapsum(u_int32_t sum)
-{
-	sum = ~sum & 0xFFFF;
-	return (htons(sum));
-}
- */
 void
 checksumIcmp(struct pkt_icmp *pkt)
 {
@@ -120,12 +92,12 @@ initialize_packet_icmp(struct targ *targ)
 
 		/* parse gen_param array */
 		for (i = 0; targ->g->gen_param[i] != NULL; i++) {
-			for ( j = 0; data_param[j].name != NULL; j++) {
+			for (j = 0; data_param[j].name != NULL; j++) {
 				if (strncmp(data_param[j].name, targ->g->gen_param[i], strlen(data_param[j].name)) == 0) {
 					if (strcmp(data_param[j].type, "char") == 0)
-						*((uintptr_t*)(data_param[j].value_loc)) = (uintptr_t) &(targ->g->gen_param[i][strlen(data_param[j].name)+1]);
+						*((uintptr_t*)(data_param[j].value_loc)) = (uintptr_t) &(targ->g->gen_param[i][strlen(data_param[j].name) + 1]);
 					else /*int param use atoi*/
-						*((int*)(data_param[j].value_loc)) =  (atoi(&targ->g->gen_param[i][strlen(data_param[j].name)+1]));
+						*((int*)(data_param[j].value_loc)) =  (atoi(&targ->g->gen_param[i][strlen(data_param[j].name) + 1]));
 					break;
 				}
 			}
@@ -145,7 +117,7 @@ initialize_packet_icmp(struct targ *targ)
 		/* retrieve source mac address. */
 		if (source_hwaddr(targ->g->ifname, mybuf, targ->g->verbose) == -1) {
 			D("Unable to retrieve source mac");
-			// continue, fail later
+			return -1;
 		}
 		targ->g->src_mac.name = mybuf;
 	}
@@ -194,7 +166,7 @@ initialize_packet_icmp(struct targ *targ)
 	ip->ip_tos = IPTOS_LOWDELAY;
 	ip->ip_len = ntohs(targ->g->pkt_size - sizeof(*eh));
 	ip->ip_id = 0;
-	ip->ip_off = htons(IP_DF); /* Don't fragment */
+	ip->ip_off = htons(IP_DF); /* don't fragment */
 	ip->ip_ttl = IPDEFTTL;
 	ip->ip_p = IPPROTO_ICMP;
 	ip->ip_dst.s_addr = htonl(targ->g->dst_ip.start);

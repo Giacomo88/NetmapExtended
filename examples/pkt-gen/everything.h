@@ -5,12 +5,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <getopt.h>	//getopt_long
+#include <getopt.h>	/* getopt_long */
 #define NETMAP_WITH_LIBS
 #include "net/netmap_user.h"
 
-#include <ctype.h>	// isprint()
-#include <unistd.h>	// sysconf()
+#include <ctype.h>	/* isprint() */
+#include <unistd.h>	/* sysconf() */
 #include <sys/poll.h>
 #include <arpa/inet.h>	/* ntohs */
 #include <sys/sysctl.h>	/* sysctl */
@@ -52,11 +52,11 @@
 
 #ifdef __APPLE__
 
-#define cpuset_t        uint64_t        // XXX
+#define cpuset_t        uint64_t        /* XXX */
 
 #define pthread_setaffinity_np(a, b, c) ((void)a, 0)
 
-#define ifr_flagshigh  ifr_flags        // XXX
+#define ifr_flagshigh  ifr_flags        /* XXX */
 #define IFF_PPROMISC   IFF_PROMISC
 #include <net/if_dl.h>  /* LLADDR */
 #define clock_gettime(a,b)      \
@@ -80,7 +80,7 @@ struct pkt_udp {
 	struct ether_header eh;
 	struct ip ip;
 	struct udphdr udp;
-	uint8_t body[MAX_BODYSIZE];	// XXX hardwired
+	uint8_t body[MAX_BODYSIZE];	/*  XXX hardwired */
 } __attribute__((__packed__));
 
 struct pkt_icmp {
@@ -88,7 +88,7 @@ struct pkt_icmp {
 	struct ether_header eh;
 	struct ip ip;
 	struct icmphdr icmp;
-	uint8_t body[MAX_BODYSIZE];	// XXX hardwired
+	uint8_t body[MAX_BODYSIZE];	/* XXX hardwired */
 } __attribute__((__packed__));
 
 struct ip_range {
@@ -104,7 +104,7 @@ struct mac_range {
 
 /* ifname can be netmap:foo-xxxx */
 #define MAX_IFNAMELEN	64	/* our buffer for ifname */
-//#define MAX_PKTSIZE	1536
+/* #define MAX_PKTSIZE	1536 */
 #define MAX_PKTSIZE	MAX_BODYSIZE	/* XXX: + IP_HDR + ETH_HDR */
 
 /* compact timestamp to fit into 60 byte packet. (enough to obtain RTT) */
@@ -207,6 +207,13 @@ struct targ {
 #define TAP_CLONEDEV	"/dev/net/tun"
 #endif /* __linux__ */
 
+#ifdef __linux__
+#define uh_sport source
+#define uh_dport dest
+#define uh_ulen len
+#define uh_sum check
+#endif /* linux */
+
 #ifdef __FreeBSD__
 #include <net/if_tun.h>
 #define TAP_CLONEDEV	"/dev/tap"
@@ -221,9 +228,9 @@ struct targ {
 #define	PAY_OFS	42	/* where in the pkt... */
 
 struct long_opt_parameter {
-	char *name;		//parameter name
-	void *value_loc;	//where to store the value
-	char *type;		//type of parameter
+	char *name;		/* parameter name */
+	void *value_loc;	/* where to store the value */
+	char *type;		/* type of parameter */
 };
 
 /* Compute the checksum of the given ip header. */
@@ -259,4 +266,4 @@ wrapsum(u_int32_t sum)
 	return (htons(sum));
 }
 
-#endif //EVERYTHING_H
+#endif /* EVERYTHING_H */

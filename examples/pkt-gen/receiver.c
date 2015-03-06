@@ -43,7 +43,7 @@ receiver_body(void *data)
 	struct pollfd pfd = { .fd = targ->fd, .events = POLLIN };
 	struct netmap_if *nifp;
 	struct netmap_ring *rxring;
-	int i;
+	int i, m, dump;
 	uint64_t received = 0;
 	char buf[MAX_BODYSIZE];
 
@@ -77,7 +77,7 @@ receiver_body(void *data)
 		}
 #endif /* !NO_PCAP */
 	} else {
-		int dump = targ->g->options & OPT_DUMP;
+		dump = targ->g->options & OPT_DUMP;
 
 		nifp = targ->nmd->nifp;
 		while (!targ->cancel) {
@@ -95,8 +95,6 @@ receiver_body(void *data)
 			}
 
 			for (i = targ->nmd->first_rx_ring; i <= targ->nmd->last_rx_ring; i++) {
-				int m;
-
 				rxring = NETMAP_RXRING(nifp, i);
 				if (nm_ring_empty(rxring))
 					continue;

@@ -52,7 +52,7 @@ extract_ip_range(struct ip_range *r, int verbose)
 	}
 	{
 		struct in_addr a;
-		char buf1[16]; // one ip address
+		char buf1[16]; /* one ip address */
 
 		a.s_addr = htonl(r->end);
 		strncpy(buf1, inet_ntoa(a), sizeof(buf1));

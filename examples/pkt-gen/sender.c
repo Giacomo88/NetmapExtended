@@ -103,13 +103,6 @@ dump_payload(char *p, int len, struct netmap_ring *ring, int cur)
 	}
 }
 
-#ifdef __linux__
-#define uh_sport source
-#define uh_dport dest
-#define uh_ulen len
-#define uh_sum check
-#endif /* linux */
-
 static int
 send_packets(struct netmap_ring *ring, void *frame,
 		int size, struct glob_arg *g, u_int count, int options,
@@ -118,7 +111,7 @@ send_packets(struct netmap_ring *ring, void *frame,
 
 	u_int n, sent, cur = ring->cur;
 	u_int fcnt;
-	void (*ptrf) ( void *pkt, struct glob_arg *g );
+	void (*ptrf) (void *pkt, struct glob_arg *g);
 	ptrf = g->pkt_map[proto_idx].f_update;
 
 	n = nm_ring_space(ring);
@@ -129,7 +122,7 @@ send_packets(struct netmap_ring *ring, void *frame,
 				count, nfrags);
 	}
 #if 0
-	if (options & (OPT_COPY | OPT_PREFETCH) ) {
+	if (options & (OPT_COPY | OPT_PREFETCH)) {
 		for (sent = 0; sent < count; sent++) {
 			struct netmap_slot *slot = &ring->slot[cur];
 			char *p = NETMAP_BUF(ring, slot->buf_idx);
@@ -173,7 +166,6 @@ send_packets(struct netmap_ring *ring, void *frame,
 		if (options & OPT_DUMP)
 			dump_payload(p, size, ring, cur);
 
-		//slot->len = size;
 		if (--fcnt > 0)
 			slot->flags |= NS_MOREFRAG;
 		else
@@ -199,7 +191,7 @@ sender_body(void *data)
 	int i, n = targ->g->npackets / targ->g->nthreads;
 	int64_t sent = 0;
 	int options = targ->g->options | OPT_COPY;
-	struct timespec nexttime = { 0, 0}; // XXX silence compiler
+	struct timespec nexttime = { 0, 0}; /* XXX silence compiler */
 	int rate_limit = targ->g->tx_rate;
 
 	void *frame=NULL;
@@ -292,7 +284,7 @@ sender_body(void *data)
 					break;
 				D("poll error/timeout on queue %d: %s", targ->me,
 						strerror(errno));
-				// goto quit;
+				/* goto quit; */
 			}
 			if (pfd.revents & POLLERR) {
 				D("poll error");
@@ -301,12 +293,12 @@ sender_body(void *data)
 			/*
 			 * scan our queues and send on those with room
 			 */
-			if (options & OPT_COPY && sent > 100000 && !(targ->g->options & OPT_COPY) ) {
+			if (options & OPT_COPY && sent > 100000 && !(targ->g->options & OPT_COPY)) {
 				D("drop copy");
 				options &= ~OPT_COPY;
 			}
 			for (i = targ->nmd->first_tx_ring; i <= targ->nmd->last_tx_ring; i++) {
-				m=0;
+				m = 0;
 				limit = rate_limit ?  tosend : targ->g->burst;
 				if (n > 0 && n - sent < limit)
 					limit = n - sent;
@@ -316,7 +308,7 @@ sender_body(void *data)
 				if (frags > 1)
 					limit = ((limit + frags - 1) / frags) * frags;
 
-				m = send_packets(txring,frame, size, targ->g,
+				m = send_packets(txring, frame, size, targ->g,
 						limit, options, frags);
 
 				ND("limit %d tail %d frags %d m %d",

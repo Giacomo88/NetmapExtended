@@ -24,7 +24,7 @@ pcap_reader(void **frame, struct glob_arg *g)
 
 	memset(pad,0, size_vh);
 
-	/* chech if the head pointer reaches the EOF */
+	/* check if the head pointer reaches the EOF */
 	if (head == NULL) {
 
 		/* closes the file associated with head and deallocates resources */
@@ -116,7 +116,7 @@ initialize_reader(struct targ *targ)
 		for (i = 0; targ->g->gen_param[i] != NULL; i++) {
 			for (j = 0; data_param[j].name != NULL; j++) {
 				if (strncmp(data_param[j].name, targ->g->gen_param[i], strlen(data_param[j].name)) == 0) {
-					*((uintptr_t*)(data_param[j].value_loc)) = (uintptr_t) &(targ->g->gen_param[i][strlen(data_param[j].name)+1]);
+					*((uintptr_t*)(data_param[j].value_loc)) = (uintptr_t) &(targ->g->gen_param[i][strlen(data_param[j].name) + 1]);
 					break;
 				}
 			}

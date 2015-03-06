@@ -43,8 +43,8 @@ pinger_body(void *data)
 				struct tstamp *tp;
 				nm_pkt_copy(frame, p, size);
 				clock_gettime(CLOCK_REALTIME_PRECISE, &ts);
-				bcopy(&sent, p+42, sizeof(sent));
-				tp = (struct tstamp *)(p+46);
+				bcopy(&sent, p + 42, sizeof(sent));
+				tp = (struct tstamp *)(p + 46);
 				tp->sec = (uint32_t)ts.tv_sec;
 				tp->nsec = (uint32_t)ts.tv_nsec;
 				sent++;
@@ -68,8 +68,8 @@ pinger_body(void *data)
 				p = NETMAP_BUF(ring, slot->buf_idx);
 
 				clock_gettime(CLOCK_REALTIME_PRECISE, &now);
-				bcopy(p+42, &seq, sizeof(seq));
-				tp = (struct tstamp *)(p+46);
+				bcopy(p + 42, &seq, sizeof(seq));
+				tp = (struct tstamp *)(p + 46);
 				ts.tv_sec = (time_t)tp->sec;
 				ts.tv_nsec = (long)tp->nsec;
 				ts.tv_sec = now.tv_sec - ts.tv_sec;

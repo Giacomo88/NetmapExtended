@@ -143,27 +143,26 @@ usage(void)
 			"%s arguments\n"
 			"\t--data param_name=VALUE   	parameters for packet generator:\n"
 			"\t\tdst_ip src_ip dst-mac src-mac pcap-file pkt-size virt_header\n"
-			"\t-g pkts_generator	(can be udp icmp pcap)\n"
-			"\t-i interface			interface name\n"
-			"\t-f function			tx rx ping pong\n"
-			"\t-n count				number of iterations (can be 0)\n"
-			"\t-t pkts_to_send		also forces tx mode\n"
-			"\t-r pkts_to_receive	also forces rx mode\n"
-			/*"\t-l pkt_size			in bytes excluding CRC\n"
-			"\t-d dst_ip[:port[-dst_ip:port]]   single or range\n"
-		"\t-s src_ip[:port[-src_ip:port]]   single or range\n"
-		"\t-D dst-mac\n"
-		"\t-S src-mac\n" */
 			"\t-a cpu_id			use setaffinity\n"
 			"\t-b burst size		testing, mostly\n"
+			"\t-C nmr_config\n"
 			"\t-c cores				cores to use\n"
+			"\t-e extra_bufs 		number of extra buffers\n"
+			"\t-F frags				number of fragments [1-62]\n"
+			"\t-f function			tx rx ping pong\n"
+			"\t-g pkts_generator	(can be udp icmp pcap)\n"
+			"\t-I					use indirect buffer\n"
+			"\t-i interface			interface name\n"
+			"\t-m monitor_mode 		can be: tx rx\n"	
+			"\t-n count				number of iterations (can be 0)\n"	
+			"\t-o data_gen_option\n"			
 			"\t-p threads			processes/threads to use\n"
-			"\t-T report_ms			milliseconds between reports\n"
-			"\t-P					use libpcap instead of netmap\n"
-			"\t-w wait_for_link_time	in seconds\n"
 			"\t-R rate				in packets per second\n"
+			"\t-T report_ms			milliseconds between reports\n"
+			"\t-v					verbose\n"
+			"\t-W 					do not exit rx even with no traffic\n"
+			"\t-w wait_for_link_time	in seconds\n"
 			"\t-X					dump payload\n"
-			"\t-H len				add empty virtio-net-header with size 'len'\n"
 			"",
 			cmd);
 
@@ -207,7 +206,7 @@ tap_alloc(char *dev)
 	}
 #endif
 	/* open the device */
-	if( (fd = open(clonedev, O_RDWR)) < 0 ) {
+	if ((fd = open(clonedev, O_RDWR)) < 0 ) {
 		return fd;
 	}
 	D("%s open successful", clonedev);
@@ -226,7 +225,7 @@ tap_alloc(char *dev)
 	}
 
 	/* try to create the device */
-	if( (err = ioctl(fd, TUNSETIFF, (void *) &ifr)) < 0 ) {
+	if ((err = ioctl(fd, TUNSETIFF, (void *) &ifr)) < 0 ) {
 		D("failed to to a TUNSETIFF: %s", strerror(errno));
 		close(fd);
 		return err;
@@ -289,7 +288,7 @@ main(int arc, char **argv)
 	g.td_body = receiver_body;
 	g.report_interval = 1000;	/* report interval */
 	g.affinity = -1;
-	g.burst = 512;		// default
+	g.burst = 512;		/* default */
 	g.nthreads = 1;
 	g.cpus = 1;
 	g.forever = 1;
@@ -300,29 +299,29 @@ main(int arc, char **argv)
 	g.gen_param = NULL;
 	g.pkt_map = p_map;
 
-	while ( (ch = getopt_long(arc, argv,
-			"a:f:F:n:i:Il:b:c:o:p:T:w:WvR:XC:H:e:m:g:", long_options, &opt_index)) != -1) {
+	while ((ch = getopt_long(arc, argv,
+			"a:f:F:n:i:Il:b:c:o:p:T:w:WvR:XC:e:m:g:", long_options, &opt_index)) != -1) {
 		struct sf *fn;
 
-		switch(ch) {
+		switch (ch) {
 		default:
 			D("bad option %c %s", ch, optarg);
 			usage();
 			break;
 
-		case 0: // LONG_OPTIONS CASE
+		case 0: /* LONG_OPTIONS CASE */
 
 			if (strcmp(long_options[opt_index].name, "data") == 0) {
 				/* count the number of parameters for --data */
-				for (index = optind-1; index < arc && argv[index][0] != '-'; index++)
+				for (index = optind - 1; index < arc && argv[index][0] != '-'; index++)
 					dparam_counter++;
 
 				/* allocate memory for g.data structure (array of string) */
-				g.gen_param = (char**)malloc(sizeof(char*) * (dparam_counter + 1));
-				i=0;
+				g.gen_param = (char **)malloc(sizeof(char *) * (dparam_counter + 1));
+				i = 0;
 
 				/* insert every paramenter in a position of g.data */
-				for (index = optind-1; index < arc && argv[index][0] != '-'; index++) {
+				for (index = optind - 1; index < arc && argv[index][0] != '-'; index++) {
 					g.gen_param[i] = argv[index];
 					i++;
 				}
@@ -496,7 +495,7 @@ main(int arc, char **argv)
 	} else if (g.dev_type == DEV_PCAP) {
 		char pcap_errbuf[PCAP_ERRBUF_SIZE];
 
-		pcap_errbuf[0] = '\0'; // init the buffer
+		pcap_errbuf[0] = '\0'; /* init the buffer */
 		g.p = pcap_open_live(g.ifname, 256 /* XXX */, 1, 100, pcap_errbuf);
 		if (g.p == NULL) {
 			D("cannot open pcap on %s", g.ifname);
@@ -541,7 +540,7 @@ main(int arc, char **argv)
 		/* validate provided nthreads. */
 		if (g.nthreads < 1 || g.nthreads > devqueues) {
 			D("bad nthreads %d, have %d queues", g.nthreads, devqueues);
-			// continue, fail later
+			/* continue, fail later */
 		}
 
 		if (g.verbose) {
@@ -618,8 +617,5 @@ main(int arc, char **argv)
 	/* This calloc was originally in start_threads() */
 	targs = calloc(g.nthreads, sizeof(*targs));
 	start_threads(&g, targs);
-	//main_thread(&g, targs);
 	return 0;
 }
-
-/* end of file */

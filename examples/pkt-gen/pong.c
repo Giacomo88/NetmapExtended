@@ -19,7 +19,7 @@ ponger_body(void *data)
 	D("understood ponger %d but don't know how to do it", n);
 	while (n == 0 || sent < n) {
 		uint32_t txcur, txavail;
-		//#define BUSYWAIT
+		/* #define BUSYWAIT */
 #ifdef BUSYWAIT
 		ioctl(pfd.fd, NIOCRXSYNC, NULL);
 #else
@@ -41,7 +41,7 @@ ponger_body(void *data)
 				struct netmap_slot *slot = &rxring->slot[cur];
 				char *src, *dst;
 				src = NETMAP_BUF(rxring, slot->buf_idx);
-				//D("got pkt %p of size %d", src, slot->len);
+				/* D("got pkt %p of size %d", src, slot->len); */
 				rxring->head = rxring->cur = nm_ring_next(rxring, cur);
 				rx++;
 				if (txavail == 0)
@@ -70,7 +70,7 @@ ponger_body(void *data)
 #ifdef BUSYWAIT
 		ioctl(pfd.fd, NIOCTXSYNC, NULL);
 #endif
-		//D("tx %d rx %d", sent, rx);
+		/* D("tx %d rx %d", sent, rx); */
 	}
 	return NULL;
 }
